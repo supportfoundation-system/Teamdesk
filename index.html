@@ -146,6 +146,7 @@ table.t td.r,table.t th.r{text-align:right}
 #dpop .dpw,#dpop .dpg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}#dpop .dpw span{font-size:12px;color:var(--muted);padding:4px 0}
 #dpop .dpg button{height:32px}#dpop .dpg button.td{color:var(--pri);font-weight:700;box-shadow:inset 0 0 0 1px var(--pri)}#dpop .dpg button.on{background:var(--pri);color:#fff}
 #dpop .dpf{display:flex;justify-content:space-between;margin-top:6px;border-top:1px solid var(--line2);padding-top:6px}#dpop .dpf button{padding:4px 10px;color:var(--pri);font-weight:600}
+.extb{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:center;background:#f3eef8;border:1px solid #ddd0ea;color:#4d3a66;border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:14px}.extb span{font-size:12.5px;color:#7a6890}
 .clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .clock .cd{font-size:13.5px;color:var(--muted)}.clock .ct{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 14px;font-size:20px;font-weight:700;color:var(--pri);font-variant-numeric:tabular-nums;letter-spacing:.5px}
 .top-r{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
@@ -202,7 +203,8 @@ const deptBy = id => S.d.depts.find(d => d.id === id) || null;
 const divBy = id => S.d.divisions.find(v => v.id === id) || null;
 // แผนกที่มองเห็นได้ตามบทบาท
 const scopeDepts = () => isTop() ? S.d.depts.slice() : isDiv() ? S.d.depts.filter(d => d.division_id === S.me.division_id) : S.d.depts.filter(d => d.id === S.me.dept_id);
-const headOf = id => { const d = deptBy(id); return !!d && (isTop() || (isDiv() && d.division_id === S.me.division_id) || (S.me.role === 'head' && S.me.dept_id === id)); };
+const isExt = id => !!(deptBy(id === undefined ? S.dept : id) || {}).ext_source;
+const headOf = id => { const d = deptBy(id); return !!d && !d.ext_source && (isTop() || (isDiv() && d.division_id === S.me.division_id) || (S.me.role === 'head' && S.me.dept_id === id)); };
 const isHead = () => headOf(S.dept);
 const orderedDepts = list => { const ord = d => { const v = divBy(d.division_id); return (v ? v.sort : 0) * 1000 + (d.sort || 0); }; return list.slice().sort((a, b) => ord(a) - ord(b)); };
 const dept = () => S.d.depts.find(d => d.id === S.dept) || null;
@@ -210,7 +212,7 @@ const members = (all) => S.d.members.filter(m => m.dept_id === S.dept && (all ||
 const memberBy = id => S.d.members.find(m => m.id === id) || null;
 const mColor = m => m ? (m.color || PAL[(Math.abs([...m.id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % PAL.length)]) : '#9aa7b0';
 const av = (m, size) => { const z = size || 26, st = 'width:' + z + 'px;height:' + z + 'px;font-size:' + Math.round(z * .45) + 'px'; return m && m.avatar_url ? '<img class="av" src="' + esc(m.avatar_url) + '" alt="" style="' + st + '" loading="lazy">' : '<span class="av" style="background:' + mColor(m) + ';' + st + '">' + esc(m ? m.nickname.slice(0, 1) : '?') + '</span>'; };
-const canManage = m => m && (m.id === S.me.id || isAdmin() || (S.me.role === 'office' && m.role !== 'admin') || ((m.role === 'head' || m.role === 'staff') && headOf(m.dept_id)));
+const canManage = m => m && !m.ext_id && (m.id === S.me.id || isAdmin() || (S.me.role === 'office' && m.role !== 'admin') || ((m.role === 'head' || m.role === 'staff') && headOf(m.dept_id)));
 const who = m => '<span class="who">' + av(m) + esc(m ? m.nickname : 'ยังไม่มอบหมาย') + '</span>';
 const mains = () => S.d.cats.filter(c => c.dept_id === S.dept && !c.parent_id).sort((a, b) => a.sort - b.sort);
 const subs = pid => S.d.cats.filter(c => c.parent_id === pid).sort((a, b) => a.sort - b.sort);
@@ -224,7 +226,7 @@ const stPill = s => '<span class="pill ' + ST[s][1] + '">' + ST[s][0] + '</span>
 const prPill = p => p !== 'normal' ? '<span class="pill ' + PR[p][1] + '">' + PR[p][0] + '</span>' : '';
 const duePill = t => { if (!t.due_date) return ''; if (!isOpen(t)) return '<span class="pill due-ok">ส่ง ' + fd(t.due_date) + '</span>'; const n = days(t.due_date); return '<span class="pill ' + (n < 0 ? 'due-bad' : n <= 3 ? 'due-soon' : 'due-ok') + '">' + (n < 0 ? 'เกิน ' + (-n) + ' วัน' : n === 0 ? 'ครบวันนี้' : 'ส่ง ' + fd(t.due_date)) + '</span>'; };
 const progBar = p => '<div class="bar"><i style="width:' + (p || 0) + '%"></i></div>';
-const canEditTask = t => isHead() || t.assignee === S.me.id || t.created_by === S.me.id;
+const canEditTask = t => !isExt(t.dept_id) && (isHead() || t.assignee === S.me.id || t.created_by === S.me.id);
 
 /* ===================== ล็อกอิน ===================== */
 async function gate(mode, err) {
@@ -282,18 +284,20 @@ function render(keepScroll) {
     '<nav class="nav">' + (S.dept ? nb('dash', 'ภาพรวมแผนก', over, true) + nb('board', 'บอร์ดงาน') + nb('list', 'งานทั้งหมด') + nb('mine', 'งานของฉัน', mineOpen) + nb('stats', 'สถิติ') + (isHead() ? '<div class="gh">จัดการ</div>' + nb('team', 'ทีมและงานหลัก') : '') : '') +
     (isAdmin() ? '<div class="gh">ผู้ดูแลระบบ</div>' + nb('structure', 'โครงสร้างองค์กร') : '') + '</nav>' +
     '<div class="me"><button class="avbtn" title="เปลี่ยนรูปโปรไฟล์" onclick="TD.avatar(\'' + S.me.id + '\')">' + av(S.me, 38) + '</button><div><div class="nm">' + esc(S.me.nickname) + '</div><div class="rl">' + ROLE_TH[S.me.role] + (isDiv() && divBy(S.me.division_id) ? ' ' + esc(divBy(S.me.division_id).name.replace(/^กอง/, '')) : '') + ' · ' + esc(S.me.username) + '</div><button onclick="TD.pwSelf()">เปลี่ยนรหัสผ่าน</button> · <button onclick="TD.logout()">ออกจากระบบ</button></div></div></aside>' +
-    '<main class="main"><div class="top"><div><button class="btn sm menu-btn" onclick="document.getElementById(\'side\').classList.toggle(\'open\')">☰ เมนู</button><h1>' + VIEWS[S.view][0] + '</h1><div class="sub">' + esc(S.view === 'structure' ? VIEWS.structure[1] : S.view === 'org' ? orgTitle() : (d ? d.name + ' · ' : '') + VIEWS[S.view][1]) + '</div></div><div class="top-r"><div class="clock"><span class="cd" id="ck_d">' + clockD() + '</span><span class="ct" id="ck_t">' + clockT() + '</span></div><div class="acts">' + topActs() + '</div></div></div>' + V[S.view]() + '</main></div>';
+    '<main class="main"><div class="top"><div><button class="btn sm menu-btn" onclick="document.getElementById(\'side\').classList.toggle(\'open\')">☰ เมนู</button><h1>' + VIEWS[S.view][0] + '</h1><div class="sub">' + esc(S.view === 'structure' ? VIEWS.structure[1] : S.view === 'org' ? orgTitle() : (d ? d.name + ' · ' : '') + VIEWS[S.view][1]) + '</div></div><div class="top-r"><div class="clock"><span class="cd" id="ck_d">' + clockD() + '</span><span class="ct" id="ck_t">' + clockT() + '</span></div><div class="acts">' + topActs() + '</div></div></div>' + (S.dept && isExt() && S.view !== 'org' && S.view !== 'structure' ? extBanner() : '') + V[S.view]() + '</main></div>';
   if (keepScroll) window.scrollTo(0, y);
 }
 function topActs() {
   if (S.view === 'structure') return '<button class="btn" onclick="TD.bulk()">⇪ นำเข้าสมาชิก (CSV)</button><button class="btn" onclick="TD.newDivision()">+ กอง</button><button class="btn pri" onclick="TD.newDept()">+ แผนก</button>';
   if (S.view === 'org') return '<button class="btn" onclick="window.print()">พิมพ์</button>';
+  if (S.dept && isExt() && ['team', 'list', 'dash', 'board', 'mine'].includes(S.view)) return S.view === 'list' ? '<button class="btn" onclick="TD.expTasks()">↓ ส่งออก CSV</button>' : '';
   if (S.view === 'team') return '<button class="btn pri" onclick="TD.newMember()">+ เพิ่มสมาชิก</button>';
   if (S.view === 'stats') return '<button class="btn" onclick="TD.expStats()">↓ ส่งออก CSV</button><button class="btn" onclick="window.print()">พิมพ์</button>';
   if (S.view === 'list') return '<button class="btn" onclick="TD.expTasks()">↓ ส่งออก CSV</button><button class="btn pri" onclick="TD.newTask()">+ มอบหมายงาน</button>';
   return S.dept ? '<button class="btn pri" onclick="TD.newTask()">+ ' + (isHead() ? 'มอบหมายงาน' : 'เพิ่มงานของฉัน') + '</button>' : '';
 }
 const V = {};
+const extBanner = () => { const d = dept(); return '<div class="extb"><div>🔗 ข้อมูลแผนกนี้ดึงมาจาก <b>HR Desk</b> อัตโนมัติ · ดูได้อย่างเดียว (มอบหมาย/อัปเดตงานที่ HR Desk)</div><span>' + (d.ext_synced_at ? 'อัปเดตล่าสุด ' + fdt(d.ext_synced_at) : 'ยังไม่เคยได้รับข้อมูล') + '</span></div>'; };
 
 /* ===================== ภาพรวม ===================== */
 V.dash = () => {
@@ -394,6 +398,10 @@ V.stats = () => {
 
 /* ===================== ทีมและงานหลัก ===================== */
 V.team = () => {
+  if (isExt()) { const ms = members();
+    return '<div class="stack"><section class="card"><div class="card-h"><h2>สมาชิก (' + ms.filter(m => m.ext_id !== 'hr:shared').length + ' คน)</h2><span class="mu">รายชื่อจาก HR Desk</span></div><div class="tw"><table class="t"><thead><tr><th>ชื่อ</th><th>ตำแหน่ง/หน้าที่</th><th>บทบาท</th></tr></thead><tbody>' +
+      ms.filter(m => m.ext_id !== 'hr:shared').map(m => '<tr><td>' + who(m) + '</td><td>' + esc(m.position) + '</td><td>' + (m.role === 'head' ? '<span class="pill st-doing">หัวหน้าแผนก</span>' : '<span class="pill st-todo">เจ้าหน้าที่</span>') + '</td></tr>').join('') + '</tbody></table></div></section>' +
+      '<section class="card"><div class="card-h"><h2>หมวดงาน (งานหลัก)</h2><span class="mu">ตามหมวดงานใน HR Desk</span></div><div class="card-b">' + (mains().map(c => '<span class="pill st-todo" style="margin:0 6px 6px 0">' + esc(c.name) + '</span>').join('') || '<div class="mu">—</div>') + '</div></section></div>'; }
   const d = dept(), ms = members(), off = members(true).filter(m => !m.active);
   return '<div class="stack"><section class="card"><div class="card-h"><h2>ข้อมูลแผนก</h2></div><div class="card-b"><div class="inl"><input class="f" id="dname" value="' + esc(d.name) + '"><input class="f" id="dcolor" type="color" value="' + esc(d.color || '#2f6f8f') + '" style="flex:none;width:56px;padding:2px"><button class="btn" onclick="TD.saveDept()">บันทึกชื่อแผนก</button></div></div></section>' +
     '<section class="card"><div class="card-h"><h2>สมาชิก (' + ms.length + ' คน)</h2><span class="mu">ล็อกอินด้วยชื่อผู้ใช้ + รหัสผ่าน</span></div><div class="tw"><table class="t"><thead><tr><th>ชื่อ</th><th>ชื่อผู้ใช้</th><th>ตำแหน่ง</th><th>บทบาท</th><th></th></tr></thead><tbody>' +
@@ -438,17 +446,37 @@ V.org = () => {
 };
 
 /* ===================== โครงสร้างองค์กร (ผู้ดูแลระบบ) ===================== */
+function extCard() {
+  const d = S.d.depts.find(x => x.ext_source === 'hr_desk'), hr = S.d.depts.find(x => /บุคคล/.test(x.name));
+  return '<section class="card"><div class="card-h"><div><h2>🔗 เชื่อมข้อมูลจาก HR Desk</h2><div class="mu">แผนกที่มีระบบของตัวเอง ให้งานไปแสดงใน Team Desk อัตโนมัติ (ดูอย่างเดียว · คีย์ที่ HR Desk ที่เดียว)</div></div></div><div class="card-b stack" style="gap:10px">' +
+    (d ? '<div class="inl" style="flex-wrap:wrap"><span>เชื่อมกับ <b>' + esc(d.name) + '</b> · ' + (d.ext_synced_at ? 'ได้รับข้อมูลล่าสุด ' + fdt(d.ext_synced_at) : '<span style="color:var(--bad)">ยังไม่เคยได้รับข้อมูล</span>') + '</span><span style="flex:1"></span><button class="btn sm" onclick="TD.extLink(\'' + d.id + '\')">สร้างรหัสใหม่</button><button class="btn sm danger" onclick="TD.extUnlink()">ยกเลิกการเชื่อม</button></div>'
+       : '<div class="inl" style="flex-wrap:wrap"><select class="f" id="ext_dept" style="max-width:420px">' + orderedDepts(S.d.depts).map(x => '<option value="' + x.id + '"' + (hr && x.id === hr.id ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select><button class="btn pri" onclick="TD.extLink(document.getElementById(\'ext_dept\').value)">สร้างรหัสเชื่อมต่อ</button></div>') +
+    '</div></section>';
+}
+async function extLink(id) {
+  const d = deptBy(id); if (!confirm('เชื่อม "' + d.name + '" กับ HR Desk?\nแผนกนี้จะแสดงข้อมูลจาก HR Desk และแก้ไขใน Team Desk ไม่ได้' + (d.ext_source ? '\n\nรหัสเดิมจะใช้ไม่ได้ ต้องตั้งค่าใหม่ใน HR Desk' : ''))) return;
+  const { data, error } = await sb.rpc('td_ext_link', { p_dept: id }); if (error) return toast(error.message, true);
+  await load('depts'); render(true); S.dlg = { type: 'sum' }; S.sumText = "select hr_teamdesk_setup('" + data + "');";
+  dlg('รหัสเชื่อมต่อ HR Desk', 'แสดงครั้งเดียว · เก็บเป็นความลับ', '<ol style="margin:0 0 0 18px;line-height:1.9"><li>เปิด Supabase ของ <b>HR Desk</b> → SQL Editor</li><li>รันไฟล์ <code>hr_teamdesk_sync.sql</code> (ครั้งแรกครั้งเดียว)</li><li>รันคำสั่งนี้:</li></ol><pre style="white-space:pre-wrap;word-break:break-all;background:#f3f6f8;border-radius:8px;padding:12px;font-size:13px">' + esc(S.sumText) + '</pre><div class="mu">หลังจากนั้นทุกครั้งที่มอบหมาย/อัปเดตงานใน HR Desk ข้อมูลจะมาแสดงที่นี่เองภายในไม่กี่วินาที</div>',
+    '<button class="btn" onclick="TD.copySum()">คัดลอกคำสั่ง</button><button class="btn pri" onclick="TD.close()">เสร็จ</button>', 640);
+}
+async function extUnlink() {
+  if (!confirm('ยกเลิกการเชื่อม HR Desk?\nงานและรายชื่อที่ดึงมาจะถูกลบออกจาก Team Desk (ข้อมูลใน HR Desk ไม่หาย)')) return;
+  const { error } = await sb.rpc('td_ext_unlink', {}); if (error) return toast(error.message, true);
+  await loadAll(); render(true); toast('ยกเลิกการเชื่อมแล้ว');
+}
 V.structure = () => {
   const lead = m => '<span class="who">' + av(m) + esc(m.nickname) + ' <span class="mu">(' + esc(m.username) + ')</span>' + (m.active ? '' : ' <span class="pill due-bad">ปิดบัญชี</span>') + '</span> <button class="btn sm ghost" onclick="TD.editMember(\'' + m.id + '\')">แก้ไข</button><button class="btn sm ghost" onclick="TD.pwOther(\'' + m.id + '\')">ตั้งรหัสใหม่</button>' + (m.id === S.me.id ? '' : '<button class="btn sm ghost" style="color:var(--bad)" onclick="TD.toggleActive(\'' + m.id + '\',' + !m.active + ')">' + (m.active ? 'ปิดบัญชี' : 'เปิดบัญชี') + '</button>');
   const offs = S.d.members.filter(m => m.role === 'office');
   const deptTbl = list => list.length ? '<table class="t"><tbody>' + list.map(d => { const hs = S.d.members.filter(m => m.dept_id === d.id && m.role === 'head' && m.active), n = S.d.members.filter(m => m.dept_id === d.id && m.active).length;
-    return '<tr><td><b>' + esc(d.name) + '</b><div class="mu">หัวหน้า: ' + (hs.map(m => esc(m.nickname)).join(', ') || '<span style="color:var(--bad)">ยังไม่มี</span>') + ' · สมาชิก ' + n + ' คน</div></td><td class="r" style="white-space:nowrap"><select class="f" style="height:32px;font-size:13px" onchange="TD.moveDept(\'' + d.id + '\',this.value)"><option value="">ขึ้นตรงสำนักงาน</option>' + S.d.divisions.map(v => '<option value="' + v.id + '"' + (v.id === d.division_id ? ' selected' : '') + '>' + esc(v.name) + '</option>').join('') + '</select> <button class="btn sm" onclick="TD.setDept(\'' + d.id + '\');TD.go(\'team\')">ทีมและงานหลัก</button></td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty">ยังไม่มีแผนก</div>';
+    return '<tr><td><b>' + esc(d.name) + '</b>' + (d.ext_source ? ' <span class="pill" style="background:#f3eef8;color:#5b4380">🔗 HR Desk</span>' : '') + '<div class="mu">หัวหน้า: ' + (hs.map(m => esc(m.nickname)).join(', ') || '<span style="color:var(--bad)">ยังไม่มี</span>') + ' · สมาชิก ' + n + ' คน</div></td><td class="r" style="white-space:nowrap"><select class="f" style="height:32px;font-size:13px" onchange="TD.moveDept(\'' + d.id + '\',this.value)"><option value="">ขึ้นตรงสำนักงาน</option>' + S.d.divisions.map(v => '<option value="' + v.id + '"' + (v.id === d.division_id ? ' selected' : '') + '>' + esc(v.name) + '</option>').join('') + '</select> <button class="btn sm" onclick="TD.setDept(\'' + d.id + '\');TD.go(\'team\')">ทีมและงานหลัก</button></td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty">ยังไม่มีแผนก</div>';
   const byDiv = k => orderedDepts(S.d.depts.filter(d => (d.division_id || '') === k));
   return '<div class="stack"><section class="card"><div class="card-h"><div><h2>' + esc(CF.OFFICE_NAME || 'สำนักงาน') + '</h2><div class="mu">หัวหน้าสำนักงาน: เห็นภาพรวมทุกกอง ทุกแผนก และมอบหมายงานได้ทุกแผนก</div></div><button class="btn sm pri" onclick="TD.newLeader(\'office\',\'\')">+ หัวหน้าสำนักงาน</button></div><div class="card-b stack" style="gap:8px">' + (offs.map(m => '<div class="inl" style="flex-wrap:wrap">' + lead(m) + '</div>').join('') || '<div class="mu">ยังไม่มีบัญชีหัวหน้าสำนักงาน</div>') +
     '<div class="secttl">แผนกขึ้นตรงสำนักงาน</div><div class="tw">' + deptTbl(byDiv('')) + '</div></div></section>' +
     S.d.divisions.map((v, i) => { const dh = S.d.members.filter(m => m.role === 'division' && m.division_id === v.id);
       return '<section class="card"><div class="card-h"><div class="inl" style="flex:1;min-width:260px"><b style="flex:none">' + (i + 1) + '.</b><input class="f" value="' + esc(v.name) + '" onchange="TD.renameDiv(\'' + v.id + '\',this.value)"></div><button class="btn sm pri" onclick="TD.newLeader(\'division\',\'' + v.id + '\')">+ หัวหน้ากอง</button><button class="btn sm" onclick="TD.newDept(\'' + v.id + '\')">+ แผนกในกองนี้</button></div><div class="card-b stack" style="gap:8px">' +
         '<div class="mu">หัวหน้ากอง</div>' + (dh.map(m => '<div class="inl" style="flex-wrap:wrap">' + lead(m) + '</div>').join('') || '<div class="mu" style="color:var(--bad)">ยังไม่มี</div>') + '<div class="tw">' + deptTbl(byDiv(v.id)) + '</div></div></section>'; }).join('') +
+    extCard() +
     '<div class="note">ลำดับสิทธิ์: <b>หัวหน้าสำนักงาน</b> เห็นทุกกองทุกแผนก · <b>หัวหน้ากอง</b> เห็นทุกแผนกในกอง · <b>หัวหน้าแผนก</b> ดูแลแผนกตัวเอง · <b>เจ้าหน้าที่</b> เห็นงานของแผนกตัวเอง · นำเข้าสมาชิกทั้งหมดทีเดียวด้วยปุ่ม "นำเข้าสมาชิก (CSV)"</div></div>';
 };
 
@@ -536,9 +564,9 @@ function openTask(id, refresh) {
     (t.detail ? '<div style="white-space:pre-wrap;background:#f7f9fa;border-radius:8px;padding:10px 12px">' + esc(t.detail) + '</div>' : '') +
     (can ? '<div class="secttl">อัปเดตสถานะ</div><div class="stbtns">' + Object.keys(ST).map(k => '<button class="' + (t.status === k ? 'on ' : '') + ST[k][1] + '" onclick="TD.setStatus(\'' + id + '\',\'' + k + '\')">' + ST[k][0] + '</button>').join('') + '</div>' +
       '<div class="secttl">ความคืบหน้า <span id="pgv">' + t.progress + '%</span></div><input type="range" min="0" max="100" step="10" value="' + t.progress + '" id="t_prog" oninput="document.getElementById(\'pgv\').textContent=this.value+\'%\'" style="width:100%">' +
-      '<div class="secttl">บันทึกติดตามงาน</div><textarea class="f" id="t_note" placeholder="รายงานความคืบหน้า ปัญหา หรือสิ่งที่ต้องการ…" style="min-height:64px"></textarea><div style="text-align:right"><button class="btn pri sm" onclick="TD.addNote(\'' + id + '\')">บันทึกความคืบหน้า</button></div>' : '<div class="mu">ดูได้อย่างเดียว (แก้ได้เฉพาะผู้รับผิดชอบ ผู้มอบหมาย และหัวหน้าแผนก)</div>') +
+      '<div class="secttl">บันทึกติดตามงาน</div><textarea class="f" id="t_note" placeholder="รายงานความคืบหน้า ปัญหา หรือสิ่งที่ต้องการ…" style="min-height:64px"></textarea><div style="text-align:right"><button class="btn pri sm" onclick="TD.addNote(\'' + id + '\')">บันทึกความคืบหน้า</button></div>' : '<div class="mu">' + (isExt(t.dept_id) ? '🔗 งานจาก HR Desk · ดูได้อย่างเดียว อัปเดตที่ HR Desk' : 'ดูได้อย่างเดียว (แก้ได้เฉพาะผู้รับผิดชอบ ผู้มอบหมาย และหัวหน้าแผนก)') + '</div>') +
     '<div class="secttl">ประวัติ</div><ul class="feed">' + (ups.map(u => { const m = memberBy(u.member_id); return '<li>' + av(m) + '<div><div><b>' + esc(m ? m.nickname : 'ระบบ') + '</b> ' + (u.text ? esc(u.text) : '') + (u.status_to ? ' ' + stPill(u.status_to) : '') + (u.progress_to != null && !u.status_to ? ' <span class="mu">' + u.progress_to + '%</span>' : '') + '</div><div class="mu">' + fdt(u.created_at) + '</div></div></li>'; }).join('') || '<li class="mu">—</li>') + '</ul>';
-  dlg(esc(t.title), esc((dept() || {}).name || ''), body, (isHead() || t.created_by === S.me.id ? '<button class="btn danger" onclick="TD.delTask(\'' + id + '\')">ลบงาน</button>' : '') + '<span class="g"></span>' + (can ? '<button class="btn" onclick="TD.editTask(\'' + id + '\')">แก้ไขรายละเอียด</button>' : '') + '<button class="btn pri" onclick="TD.close()">ปิด</button>');
+  dlg(esc(t.title), esc((dept() || {}).name || ''), body, (!isExt(t.dept_id) && (isHead() || t.created_by === S.me.id) ? '<button class="btn danger" onclick="TD.delTask(\'' + id + '\')">ลบงาน</button>' : '') + '<span class="g"></span>' + (can ? '<button class="btn" onclick="TD.editTask(\'' + id + '\')">แก้ไขรายละเอียด</button>' : '') + '<button class="btn pri" onclick="TD.close()">ปิด</button>');
 }
 function editTask(id) {
   const t = S.d.tasks.find(x => x.id === id); S.dlg = { type: 'task', id, editing: true };
@@ -749,7 +777,7 @@ function parseCsv(t) {
 function bulkTemplate() {
   const office = CF.OFFICE_NAME || 'สำนักงาน', rows = [BULK_HD, [office, 'หัวหน้าสำนักงาน', '', '', '', '', '']];
   S.d.divisions.forEach(v => rows.push([v.name, 'หัวหน้ากอง', '', '', '', '', '']));
-  orderedDepts(S.d.depts).forEach(d => { rows.push([d.name, 'หัวหน้าแผนก', '', '', '', '', '']); rows.push([d.name, 'เจ้าหน้าที่', '', '', '', '', '']); rows.push([d.name, 'เจ้าหน้าที่', '', '', '', '', '']); });
+  orderedDepts(S.d.depts).filter(d => !d.ext_source).forEach(d => { rows.push([d.name, 'หัวหน้าแผนก', '', '', '', '', '']); rows.push([d.name, 'เจ้าหน้าที่', '', '', '', '', '']); rows.push([d.name, 'เจ้าหน้าที่', '', '', '', '', '']); });
   download('แบบฟอร์มนำเข้าสมาชิก_TeamDesk.csv', csv(rows));
 }
 function bulk() { S.dlg = { type: 'bulk', rows: [] }; drawBulk(); }
@@ -777,6 +805,7 @@ async function bulkFile(f) {
     else if (!x.nickname) x.err = 'ไม่มีชื่อเล่น';
     else if (x.role === 'division' && !S.d.divisions.some(v => v.name.trim() === x.unit)) x.err = 'ไม่พบกองนี้';
     else if ((x.role === 'head' || x.role === 'staff') && !S.d.depts.some(d => d.name.trim() === x.unit)) x.err = 'ไม่พบแผนกนี้';
+    else if ((x.role === 'head' || x.role === 'staff') && S.d.depts.some(d => d.name.trim() === x.unit && d.ext_source)) x.err = 'แผนกนี้ใช้รายชื่อจาก HR Desk';
     else if (!/^[a-z0-9._-]{2,30}$/.test(x.username)) x.err = 'ชื่อผู้ใช้ใช้ได้เฉพาะ a-z 0-9 . _ -';
     else if (used.has(x.username)) x.err = 'ชื่อผู้ใช้มีในระบบแล้ว';
     else if (seen.has(x.username)) x.err = 'ชื่อผู้ใช้ซ้ำในไฟล์';
@@ -817,7 +846,7 @@ window.TD = {
   newTask, saveNew, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
   newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => pwDialog(S.me.id, true), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
-  newDivision, renameDiv, moveDept, newLeader, saveLeader, bulk, bulkTemplate, bulkFile, bulkSave, sumCsv: () => download('บัญชีผู้ใช้_TeamDesk.csv', csv(S.sumRows || [])),
+  extLink, extUnlink, newDivision, renameDiv, moveDept, newLeader, saveLeader, bulk, bulkTemplate, bulkFile, bulkSave, sumCsv: () => download('บัญชีผู้ใช้_TeamDesk.csv', csv(S.sumRows || [])),
   ndAddWork: () => { grabDept(); S.dlg.works.push({ name: '', subs: ['', '', ''] }); drawDept(); }, ndAddSub: i => { grabDept(); S.dlg.works[i].subs.push(''); drawDept(); }, ndAddMember: () => { grabDept(); S.dlg.team.push({}); drawDept(); },
   copySum: () => { (navigator.clipboard ? navigator.clipboard.writeText(S.sumText) : Promise.reject()).then(() => toast('คัดลอกแล้ว')).catch(() => prompt('คัดลอกข้อความนี้', S.sumText)); },
   expTasks, expStats,
