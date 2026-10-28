@@ -137,7 +137,11 @@ table.t td.r,table.t th.r{text-align:right}
   .board{grid-template-columns:repeat(4,minmax(240px,82vw))}
   .row2,.row3{grid-template-columns:1fr}
 }
-@media print{.side,.acts,.frow,.menu-btn{display:none!important}.main{padding:0}}
+.offacc{border-top:1px solid var(--line)}.offacc summary{cursor:pointer;padding:12px 16px;color:var(--muted);font-size:14px}
+.clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.clock .cd{font-size:13.5px;color:var(--muted)}.clock .ct{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 14px;font-size:20px;font-weight:700;color:var(--pri);font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.top-r{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+@media print{.side,.acts,.frow,.menu-btn{display:none!important}.main{padding:0}.clock .ct{border:0;padding:0;font-size:14px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -155,6 +159,10 @@ const DOMAIN = CF.EMAIL_DOMAIN || 'teamdesk.local';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const toast = (m, bad) => { const t = $('toast'); t.textContent = m; t.className = bad ? 'show bad' : 'show'; clearTimeout(toast.h); toast.h = setTimeout(() => { t.className = ''; }, 3800); };
+const TWD = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const clockD = () => { const d = new Date(); return 'วัน' + TWD[d.getDay()] + 'ที่ ' + d.getDate() + ' ' + TMF[d.getMonth()] + ' ' + (d.getFullYear() + 543); };
+const clockT = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + ' น.'; };
+setInterval(() => { const t = document.getElementById('ck_t'); if (t) { t.textContent = clockT(); const dd = document.getElementById('ck_d'); if (dd) dd.textContent = clockD(); } }, 1000);
 const TM = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TMF = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const pad = n => String(n).padStart(2, '0');
@@ -190,7 +198,7 @@ const headOf = id => { const d = deptBy(id); return !!d && (isTop() || (isDiv() 
 const isHead = () => headOf(S.dept);
 const orderedDepts = list => { const ord = d => { const v = divBy(d.division_id); return (v ? v.sort : 0) * 1000 + (d.sort || 0); }; return list.slice().sort((a, b) => ord(a) - ord(b)); };
 const dept = () => S.d.depts.find(d => d.id === S.dept) || null;
-const members = (all) => S.d.members.filter(m => m.dept_id === S.dept && (all || m.active));
+const members = (all) => S.d.members.filter(m => m.dept_id === S.dept && (all || m.active)).sort((a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1) || (a.sort || 0) - (b.sort || 0) || a.nickname.localeCompare(b.nickname, 'th'));
 const memberBy = id => S.d.members.find(m => m.id === id) || null;
 const mColor = m => m ? (m.color || PAL[(Math.abs([...m.id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) % PAL.length)]) : '#9aa7b0';
 const av = (m, size) => { const z = size || 26, st = 'width:' + z + 'px;height:' + z + 'px;font-size:' + Math.round(z * .45) + 'px'; return m && m.avatar_url ? '<img class="av" src="' + esc(m.avatar_url) + '" alt="" style="' + st + '" loading="lazy">' : '<span class="av" style="background:' + mColor(m) + ';' + st + '">' + esc(m ? m.nickname.slice(0, 1) : '?') + '</span>'; };
@@ -266,7 +274,7 @@ function render(keepScroll) {
     '<nav class="nav">' + (S.dept ? nb('dash', 'ภาพรวมแผนก', over, true) + nb('board', 'บอร์ดงาน') + nb('list', 'งานทั้งหมด') + nb('mine', 'งานของฉัน', mineOpen) + nb('stats', 'สถิติ') + (isHead() ? '<div class="gh">จัดการ</div>' + nb('team', 'ทีมและงานหลัก') : '') : '') +
     (isAdmin() ? '<div class="gh">ผู้ดูแลระบบ</div>' + nb('structure', 'โครงสร้างองค์กร') : '') + '</nav>' +
     '<div class="me"><button class="avbtn" title="เปลี่ยนรูปโปรไฟล์" onclick="TD.avatar(\'' + S.me.id + '\')">' + av(S.me, 38) + '</button><div><div class="nm">' + esc(S.me.nickname) + '</div><div class="rl">' + ROLE_TH[S.me.role] + (isDiv() && divBy(S.me.division_id) ? ' ' + esc(divBy(S.me.division_id).name.replace(/^กอง/, '')) : '') + ' · ' + esc(S.me.username) + '</div><button onclick="TD.pwSelf()">เปลี่ยนรหัสผ่าน</button> · <button onclick="TD.logout()">ออกจากระบบ</button></div></div></aside>' +
-    '<main class="main"><div class="top"><div><button class="btn sm menu-btn" onclick="document.getElementById(\'side\').classList.toggle(\'open\')">☰ เมนู</button><h1>' + VIEWS[S.view][0] + '</h1><div class="sub">' + esc(S.view === 'structure' ? VIEWS.structure[1] : S.view === 'org' ? orgTitle() : (d ? d.name + ' · ' : '') + VIEWS[S.view][1]) + '</div></div><div class="acts">' + topActs() + '</div></div>' + V[S.view]() + '</main></div>';
+    '<main class="main"><div class="top"><div><button class="btn sm menu-btn" onclick="document.getElementById(\'side\').classList.toggle(\'open\')">☰ เมนู</button><h1>' + VIEWS[S.view][0] + '</h1><div class="sub">' + esc(S.view === 'structure' ? VIEWS.structure[1] : S.view === 'org' ? orgTitle() : (d ? d.name + ' · ' : '') + VIEWS[S.view][1]) + '</div></div><div class="top-r"><div class="clock"><span class="cd" id="ck_d">' + clockD() + '</span><span class="ct" id="ck_t">' + clockT() + '</span></div><div class="acts">' + topActs() + '</div></div></div>' + V[S.view]() + '</main></div>';
   if (keepScroll) window.scrollTo(0, y);
 }
 function topActs() {
@@ -361,7 +369,7 @@ function statData() {
   return { all, rowFor, y, m };
 }
 V.stats = () => {
-  const { all, rowFor, y, m } = statData(), ms = members(true).filter(x => x.active || all.some(t => t.assignee === x.id));
+  const { all, rowFor, y, m } = statData(), ms = members(true).filter(x => x.role !== 'head' && (x.active || all.some(t => t.assignee === x.id)));
   const years = [...new Set([new Date().getFullYear(), ...all.map(t => new Date(t.created_at).getFullYear())])].sort((a, b) => b - a);
   const head = '<tr><th>ผู้รับผิดชอบ</th><th class="r">ได้รับงาน</th><th class="r">เสร็จ</th><th class="r">ตรงเวลา</th><th class="r">ส่งช้า</th><th class="r">เฉลี่ย (วัน)</th><th class="r">ค้างตอนนี้</th><th class="r">เกินกำหนดตอนนี้</th></tr>';
   const cell = r => '<td class="r">' + r.got + '</td><td class="r"><b>' + r.done + '</b></td><td class="r">' + (r.ontime == null ? '<span class="mu">—</span>' : '<span class="pill ' + (r.ontime >= 80 ? 'st-done' : r.ontime >= 50 ? 'due-soon' : 'due-bad') + '">' + r.ontime + '%</span>') + '</td><td class="r">' + (r.late || '<span class="mu">0</span>') + '</td><td class="r">' + (r.avg == null ? '<span class="mu">—</span>' : r.avg) + '</td><td class="r">' + r.openNow + '</td><td class="r">' + (r.overNow ? '<span class="pill due-bad">' + r.overNow + '</span>' : '<span class="mu">0</span>') + '</td>';
@@ -378,10 +386,11 @@ V.stats = () => {
 
 /* ===================== ทีมและงานหลัก ===================== */
 V.team = () => {
-  const d = dept(), ms = members(true);
+  const d = dept(), ms = members(), off = members(true).filter(m => !m.active);
   return '<div class="stack"><section class="card"><div class="card-h"><h2>ข้อมูลแผนก</h2></div><div class="card-b"><div class="inl"><input class="f" id="dname" value="' + esc(d.name) + '"><input class="f" id="dcolor" type="color" value="' + esc(d.color || '#2f6f8f') + '" style="flex:none;width:56px;padding:2px"><button class="btn" onclick="TD.saveDept()">บันทึกชื่อแผนก</button></div></div></section>' +
-    '<section class="card"><div class="card-h"><h2>สมาชิก (' + ms.filter(m => m.active).length + ' คน)</h2><span class="mu">ล็อกอินด้วยชื่อผู้ใช้ + รหัสผ่าน</span></div><div class="tw"><table class="t"><thead><tr><th>ชื่อ</th><th>ชื่อผู้ใช้</th><th>ตำแหน่ง</th><th>บทบาท</th><th></th></tr></thead><tbody>' +
-    ms.map(m => '<tr' + (m.active ? '' : ' style="opacity:.55"') + '><td><span class="who"><button class="btn ghost" style="padding:0;min-height:0" title="เปลี่ยนรูปโปรไฟล์" onclick="TD.avatar(\'' + m.id + '\')">' + av(m, 36) + '</button>' + esc(m.nickname) + '</span>' + (m.full_name ? '<div class="mu">' + esc(m.full_name) + '</div>' : '') + '</td><td class="mu">' + esc(m.username) + '</td><td>' + esc(m.position) + '</td><td>' + (m.role === 'head' ? '<span class="pill st-doing">หัวหน้าแผนก</span>' : '<span class="pill st-todo">เจ้าหน้าที่</span>') + (m.active ? '' : ' <span class="pill due-bad">ปิดบัญชี</span>') + '</td><td class="r" style="white-space:nowrap"><button class="btn sm" onclick="TD.editMember(\'' + m.id + '\')">แก้ไข</button> <button class="btn sm" onclick="TD.pwOther(\'' + m.id + '\')">ตั้งรหัสผ่านใหม่</button> ' + (m.id === S.me.id ? '' : '<button class="btn sm ' + (m.active ? 'danger' : '') + '" onclick="TD.toggleActive(\'' + m.id + '\',' + !m.active + ')">' + (m.active ? 'ปิดบัญชี' : 'เปิดบัญชี') + '</button>') + '</td></tr>').join('') + '</tbody></table></div></section>' +
+    '<section class="card"><div class="card-h"><h2>สมาชิก (' + ms.length + ' คน)</h2><span class="mu">ล็อกอินด้วยชื่อผู้ใช้ + รหัสผ่าน</span></div><div class="tw"><table class="t"><thead><tr><th>ชื่อ</th><th>ชื่อผู้ใช้</th><th>ตำแหน่ง</th><th>บทบาท</th><th></th></tr></thead><tbody>' +
+    ms.map(m => '<tr' + (m.active ? '' : ' style="opacity:.55"') + '><td><span class="who"><button class="btn ghost" style="padding:0;min-height:0" title="เปลี่ยนรูปโปรไฟล์" onclick="TD.avatar(\'' + m.id + '\')">' + av(m, 36) + '</button>' + esc(m.nickname) + '</span>' + (m.full_name ? '<div class="mu">' + esc(m.full_name) + '</div>' : '') + '</td><td class="mu">' + esc(m.username) + '</td><td>' + esc(m.position) + '</td><td>' + (m.role === 'head' ? '<span class="pill st-doing">หัวหน้าแผนก</span>' : '<span class="pill st-todo">เจ้าหน้าที่</span>') + (m.active ? '' : ' <span class="pill due-bad">ปิดบัญชี</span>') + '</td><td class="r" style="white-space:nowrap"><button class="btn sm" onclick="TD.editMember(\'' + m.id + '\')">แก้ไข</button> <button class="btn sm" onclick="TD.pwOther(\'' + m.id + '\')">ตั้งรหัสผ่านใหม่</button> ' + (m.id === S.me.id ? '' : '<button class="btn sm ' + (m.active ? 'danger' : '') + '" onclick="TD.toggleActive(\'' + m.id + '\',' + !m.active + ')">' + (m.active ? 'ปิดบัญชี' : 'เปิดบัญชี') + '</button>') + '</td></tr>').join('') + '</tbody></table></div>' +
+    (off.length ? '<details class="offacc"><summary>บัญชีที่ปิดแล้ว (' + off.length + ')</summary><table class="t"><tbody>' + off.map(m => '<tr><td>' + who(m) + (m.full_name ? '<div class="mu">' + esc(m.full_name) + '</div>' : '') + '</td><td class="mu">' + esc(m.username) + '</td><td class="mu">' + esc(m.position) + '</td><td class="r" style="white-space:nowrap"><button class="btn sm" onclick="TD.toggleActive(\'' + m.id + '\',true)">เปิดบัญชี</button> <button class="btn sm danger" onclick="TD.delMember(\'' + m.id + '\')">ลบถาวร</button></td></tr>').join('') + '</tbody></table><div class="mu" style="padding:8px 16px 12px">ปิดบัญชี = ล็อกอินไม่ได้ แต่สถิติงานเดิมยังอยู่ · ลบถาวร ได้เฉพาะบัญชีที่ไม่เคยมีงาน (เช่น สร้างผิด/ซ้ำ)</div></details>' : '') + '</section>' +
     '<section class="card"><div class="card-h"><h2>งานหลักและงานย่อย</h2><button class="btn sm pri" onclick="TD.addCat(null)">+ เพิ่มงานหลัก</button></div><div class="card-b stack" style="gap:12px">' +
     (mains().length ? mains().map((c, i) => '<div class="workbox"><div class="inl"><b style="flex:none">' + (i + 1) + '.</b><input class="f" value="' + esc(c.name) + '" onchange="TD.renameCat(\'' + c.id + '\',this.value)"><button class="btn sm" onclick="TD.addCat(\'' + c.id + '\')">+ งานย่อย</button><button class="btn sm danger" onclick="TD.delCat(\'' + c.id + '\')">ลบ</button></div>' +
       subs(c.id).map((s, j) => '<div class="inl" style="padding-left:28px"><span class="mu" style="flex:none">' + (i + 1) + '.' + (j + 1) + '</span><input class="f" value="' + esc(s.name) + '" onchange="TD.renameCat(\'' + s.id + '\',this.value)"><button class="btn sm danger" onclick="TD.delCat(\'' + s.id + '\')">ลบ</button></div>').join('') + '</div>').join('') : '<div class="empty">ยังไม่มีงานหลัก</div>') +
@@ -546,6 +555,11 @@ async function savePw(id, self) {
   const p = val('pw1'); if (p.length < 6) return showErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); if (self && p !== val('pw2')) return showErr('รหัสผ่านทั้ง 2 ช่องไม่ตรงกัน');
   const { error } = await sb.rpc('td_set_password', { p_member: id, p_password: p }); if (error) return showErr(error.message);
   closeDlg(); if (self) toast('เปลี่ยนรหัสผ่านแล้ว'); else alert('ตั้งรหัสผ่านใหม่แล้ว\n\nชื่อผู้ใช้: ' + memberBy(id).username + '\nรหัสผ่าน: ' + p);
+}
+async function delMember(id) {
+  const m = memberBy(id); if (!confirm('ลบบัญชี ' + m.nickname + ' (' + m.username + ') ถาวร?\nลบแล้วกู้คืนไม่ได้ ชื่อผู้ใช้นี้จะนำไปใช้ใหม่ได้')) return;
+  const { error } = await sb.rpc('td_delete_member', { p_member: id }); if (error) return toast(error.message, true);
+  await load('members'); render(true); toast('ลบบัญชีแล้ว');
 }
 async function toggleActive(id, on) {
   const m = memberBy(id); if (!on && !confirm('ปิดบัญชี ' + m.nickname + '? จะล็อกอินไม่ได้ (งานเดิมและสถิติยังอยู่)')) return;
@@ -742,7 +756,7 @@ const csv = rows => '﻿' + rows.map(r => r.map(v => { v = String(v == null ? ''
 const download = (name, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 function expTasks() { const l = sortTasks(filtered()); download('งาน_' + ((dept() || {}).name || '') + '.csv', csv([['ชื่องาน', 'งานหลัก', 'งานย่อย', 'ผู้รับผิดชอบ', 'มอบหมายโดย', 'สถานะ', 'ความสำคัญ', 'ความคืบหน้า%', 'วันเริ่ม', 'กำหนดส่ง', 'วันที่เสร็จ', 'สร้างเมื่อ', 'รายละเอียด']].concat(l.map(t => { const c = catBy(t.cat_id), mc = mainOf(t); return [t.title, mc ? mc.name : '', c && c.parent_id ? c.name : '', (memberBy(t.assignee) || {}).nickname || '', (memberBy(t.created_by) || {}).nickname || '', ST[t.status][0], PR[t.priority][0], t.progress, t.start_date || '', t.due_date || '', t.done_at ? iso(new Date(t.done_at)) : '', iso(new Date(t.created_at)), t.detail]; })))); }
 function expStats() { const { all, rowFor, y, m } = statData(); const hd = ['', 'ได้รับงาน', 'เสร็จ', 'ตรงเวลา%', 'ส่งช้า', 'เฉลี่ย(วัน)', 'ค้างตอนนี้', 'เกินกำหนดตอนนี้'], r = (n, x) => [n, x.got, x.done, x.ontime == null ? '' : x.ontime, x.late, x.avg == null ? '' : x.avg, x.openNow, x.overNow];
-  download('สถิติ_' + ((dept() || {}).name || '') + '_' + (m === 'all' ? '' : (+m + 1) + '-') + (y + 543) + '.csv', csv([['ผู้รับผิดชอบ'].concat(hd.slice(1))].concat(members(true).map(x => r(x.nickname, rowFor(all.filter(t => t.assignee === x.id))))).concat([r('รวมทั้งแผนก', rowFor(all))], [[]], [['งานหลัก'].concat(hd.slice(1))], mains().map(c => r(c.name, rowFor(all.filter(t => { const mc = mainOf(t); return mc && mc.id === c.id; }))))))); }
+  download('สถิติ_' + ((dept() || {}).name || '') + '_' + (m === 'all' ? '' : (+m + 1) + '-') + (y + 543) + '.csv', csv([['ผู้รับผิดชอบ'].concat(hd.slice(1))].concat(members(true).filter(x => x.role !== 'head').map(x => r(x.nickname, rowFor(all.filter(t => t.assignee === x.id))))).concat([r('รวมทั้งแผนก', rowFor(all))], [[]], [['งานหลัก'].concat(hd.slice(1))], mains().map(c => r(c.name, rowFor(all.filter(t => { const mc = mainOf(t); return mc && mc.id === c.id; }))))))); }
 
 /* ===================== ส่งออกให้ปุ่มเรียกใช้ ===================== */
 window.TD = {
@@ -753,7 +767,7 @@ window.TD = {
   q: v => { S.f.q = v; const pos = $('fq').selectionStart; render(true); const e = $('fq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   stat: o => { Object.assign(S.stat, o); render(true); },
   newTask, saveNew, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
-  newMember, saveNewMember, editMember, saveMember, toggleActive, avatar, avatarDel, pwSelf: () => pwDialog(S.me.id, true), pwOther: id => pwDialog(id, false), savePw,
+  newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => pwDialog(S.me.id, true), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
   newDivision, renameDiv, moveDept, newLeader, saveLeader, bulk, bulkTemplate, bulkFile, bulkSave, sumCsv: () => download('บัญชีผู้ใช้_TeamDesk.csv', csv(S.sumRows || [])),
   ndAddWork: () => { grabDept(); S.dlg.works.push({ name: '', subs: ['', '', ''] }); drawDept(); }, ndAddSub: i => { grabDept(); S.dlg.works[i].subs.push(''); drawDept(); }, ndAddMember: () => { grabDept(); S.dlg.team.push({}); drawDept(); },
