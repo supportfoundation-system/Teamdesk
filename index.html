@@ -53,6 +53,20 @@ a{color:var(--pri)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
 .tile{padding:16px 18px;border-top:4px solid var(--c,var(--pri))}
 .tile .l{font-size:13.5px;color:var(--muted)}.tile .v{font-size:30px;font-weight:700;line-height:1.2;margin-top:4px}.tile .s{font-size:12.5px;color:var(--muted)}
+.tb{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:16px}
+.pc{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#fff;text-align:center;padding:0 14px 14px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.pc:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(20,40,50,.10)}
+.pc .bn{position:relative;height:66px;margin:0 -14px;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--mc) 30%,#fff),color-mix(in srgb,var(--mc) 8%,#fff))}
+.pc .bn:after{content:'';position:absolute;right:-28px;top:-44px;width:120px;height:120px;border-radius:50%;background:color-mix(in srgb,var(--mc) 22%,transparent)}
+.pc .ov{position:absolute;top:10px;left:10px;z-index:2;font-size:11.5px}
+.pc .ring{position:relative;z-index:1;width:96px;height:96px;margin:-50px auto 8px;border-radius:50%;padding:3px;background:#fff;border:3px solid var(--mc);display:flex;align-items:center;justify-content:center}
+.pc .ring .av{width:84px!important;height:84px!important;font-size:34px!important;margin:0}
+.pc .nm{font-size:18px;font-weight:700;line-height:1.3}.pc .ps{font-size:12.5px;color:var(--muted);min-height:18px}
+.pc .st{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 10px}
+.pc .st div{border-radius:10px;padding:8px 2px}.pc .st b{display:block;font-size:21px;line-height:1.2}.pc .st span{font-size:11px;color:var(--muted)}
+.pc .st .a{background:#fbf2df}.pc .st .a b{color:#9a6a12}.pc .st .b{background:#e5eef8}.pc .st .b b{color:#2b5f9c}.pc .st .c{background:#e2f3e8}.pc .st .c b{color:#23794e}
+.pc .nx{font-size:12.5px;color:var(--muted);min-height:36px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc .go{margin-top:6px;font-size:13px;font-weight:600}
 .tile.clk{cursor:pointer}.tile.clk:hover{box-shadow:0 4px 14px rgba(0,0,0,.06)}
 .mu{color:var(--muted);font-size:13px}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:500;white-space:nowrap}
@@ -228,7 +242,7 @@ async function start() {
   render();
   sb.channel('td').on('postgres_changes', { event: '*', schema: 'public' }, p => {
     const k = Object.keys(TABLES).find(x => TABLES[x][0] === p.table); if (!k) return;
-    clearTimeout(start['t' + k]); start['t' + k] = setTimeout(async () => { await load(k); render(true); if (S.dlg && S.dlg.type === 'task') openTask(S.dlg.id, true); }, 400);
+    clearTimeout(start['t' + k]); start['t' + k] = setTimeout(async () => { await load(k); render(true); if (S.dlg && S.dlg.type === 'task') { const n = $('t_note'), nv = n ? n.value : '', pv = $('t_prog') ? $('t_prog').value : null; openTask(S.dlg.id, true); if (nv && $('t_note')) $('t_note').value = nv; if (pv != null && $('t_prog') && $('t_prog').value !== pv) $('t_prog').value = pv; } }, 400);
   }).subscribe();
 }
 
@@ -270,9 +284,12 @@ V.dash = () => {
   const all = tasks(), open = all.filter(isOpen), ym = today().slice(0, 7), doneM = all.filter(t => t.status === 'done' && t.done_at && iso(new Date(t.done_at)).slice(0, 7) === ym);
   const over = all.filter(isOver), soon = open.filter(t => t.due_date && days(t.due_date) >= 0 && days(t.due_date) <= 7).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const tile = (l, v, s, c, act) => '<div class="card tile' + (act ? ' clk" onclick="' + act : '') + '" style="--c:' + c + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
-  const ms = members();
-  const perM = ms.map(m => { const mt = all.filter(t => t.assignee === m.id); return { m, open: mt.filter(isOpen).length, over: mt.filter(isOver).length, done: mt.filter(t => t.status === 'done' && t.done_at && iso(new Date(t.done_at)).slice(0, 7) === ym).length }; });
-  const maxO = Math.max(1, ...perM.map(x => x.open));
+  const ms = members().filter(m => m.role !== 'head');
+  const perM = ms.map(m => { const mt = all.filter(t => t.assignee === m.id), op = mt.filter(isOpen); return { m, todo: op.filter(t => t.status === 'todo').length, doing: op.filter(t => t.status !== 'todo').length, over: mt.filter(isOver).length, done: mt.filter(t => t.status === 'done' && t.done_at && iso(new Date(t.done_at)).slice(0, 7) === ym).length, next: op.slice().sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))[0] }; });
+  const card = x => '<div class="pc" style="--mc:' + mColor(x.m) + '" onclick="TD.filt({who:\'' + x.m.id + '\'})"><div class="bn"></div>' + (x.over ? '<span class="pill due-bad ov">เกินกำหนด ' + x.over + '</span>' : '') +
+    '<div class="ring">' + av(x.m, 84) + '</div><div class="nm">' + esc(x.m.nickname) + '</div><div class="ps">' + esc(x.m.position || x.m.full_name || '') + '</div>' +
+    '<div class="st"><div class="a"><b>' + x.todo + '</b><span>รอทำ</span></div><div class="b"><b>' + x.doing + '</b><span>กำลังทำ</span></div><div class="c"><b>' + x.done + '</b><span>เสร็จเดือนนี้</span></div></div>' +
+    '<div class="nx">' + (x.next ? 'ถัดไป: ' + esc(x.next.title) + (x.next.due_date ? ' · ' + fd(x.next.due_date) : '') : 'ไม่มีงานค้าง') + '</div><div class="go">ดูงานทั้งหมด →</div></div>';
   const perC = mains().map(c => { const ct = all.filter(t => { const mc = mainOf(t); return mc && mc.id === c.id; }); const ok = ct.filter(t => t.status === 'done').length, live = ct.filter(t => t.status !== 'cancel').length; return { c, open: ct.filter(isOpen).length, ok, live }; });
   const unassigned = open.filter(t => !t.assignee).length;
   const recent = S.d.updates.filter(u => u.dept_id === S.dept).slice(-12).reverse();
@@ -283,8 +300,9 @@ V.dash = () => {
     tile('ครบกำหนดใน 7 วัน', soon.length, 'เตรียมติดตาม', 'var(--warn)', '') +
     tile('เสร็จเดือนนี้', doneM.length, TMF[new Date().getMonth()] + ' ' + (new Date().getFullYear() + 543), 'var(--done)', "TD.go('stats')") +
     (unassigned ? tile('ยังไม่มอบหมาย', unassigned, 'งานที่ยังไม่มีผู้รับผิดชอบ', 'var(--todo)', "TD.filt({who:'none'})") : '') + '</div>' +
-    '<div class="grid2"><section class="card"><div class="card-h"><h2>ภาระงานรายคน</h2><span class="mu">งานค้าง · เกินกำหนด · เสร็จเดือนนี้</span></div><div class="card-b">' +
-    (perM.length ? '<table class="t"><tbody>' + perM.map(x => '<tr class="clk" onclick="TD.filt({who:\'' + x.m.id + '\'})"><td style="width:40%">' + who(x.m) + '</td><td>' + progBar(x.open / maxO * 100) + '</td><td class="r"><b>' + x.open + '</b></td><td class="r">' + (x.over ? '<span class="pill due-bad">' + x.over + '</span>' : '<span class="mu">0</span>') + '</td><td class="r"><span class="pill st-done">' + x.done + '</span></td></tr>').join('') + '</tbody></table>' : '<div class="empty">ยังไม่มีสมาชิก</div>') + '</div></section>' +
+    '<section class="card"><div class="card-h"><div><h2>บอร์ดทีม</h2><div class="mu">งานของน้อง ๆ แต่ละคน · คลิกการ์ดเพื่อดูงานของคนนั้น</div></div></div><div class="card-b">' +
+    (perM.length ? '<div class="tb">' + perM.map(card).join('') + '</div>' : '<div class="empty">ยังไม่มีเจ้าหน้าที่ในแผนก</div>') + '</div></section>' +
+    '<div class="grid2">' +
     '<section class="card"><div class="card-h"><h2>ความคืบหน้าตามงานหลัก</h2><span class="mu">เสร็จ / ทั้งหมด (ไม่นับยกเลิก)</span></div><div class="card-b">' +
     (perC.length ? '<table class="t"><tbody>' + perC.map(x => '<tr class="clk" onclick="TD.filt({cat:\'' + x.c.id + '\'})"><td style="width:45%"><b>' + esc(x.c.name) + '</b><div class="mu">ค้าง ' + x.open + ' งาน</div></td><td>' + progBar(x.live ? x.ok / x.live * 100 : 0) + '</td><td class="r">' + x.ok + ' / ' + x.live + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">ยังไม่ได้ตั้งงานหลัก</div>') + '</div></section></div>' +
     '<div class="grid2"><section class="card"><div class="card-h"><h2>เกินกำหนด / ใกล้ครบกำหนด</h2></div><div class="tw">' + (over.length + soon.length ? '<table class="t"><tbody>' + over.concat(soon).slice(0, 15).map(tRow).join('') + '</tbody></table>' : '<div class="empty">ไม่มีงานเร่งด่วน 👍</div>') + '</div></section>' +
@@ -420,7 +438,10 @@ V.structure = () => {
 /* ===================== หน้าต่าง (dialog) ===================== */
 function dlg(title, sub, body, foot, w) { S.dlg = S.dlg || {}; $('dlg').innerHTML = '<div class="dlg" style="max-width:' + (w || 720) + 'px" onclick="event.stopPropagation()"><div class="dh"><h2>' + title + '</h2>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div><div class="db">' + body + '</div><div class="df">' + foot + '</div></div>'; $('dlg').className = 'show'; }
 function closeDlg() { S.dlg = null; $('dlg').className = ''; $('dlg').innerHTML = ''; }
-$('dlg').addEventListener('click', closeDlg);
+// ปิดเมื่อกดที่พื้นหลังเท่านั้น (กดเริ่มและปล่อยบนพื้นหลัง) · ลากคลุมข้อความในฟอร์มแล้วปล่อยเมาส์นอกกล่องจะไม่ปิด
+let dlgDown = null;
+$('dlg').addEventListener('mousedown', e => { dlgDown = e.target; });
+$('dlg').addEventListener('click', e => { if (e.target === $('dlg') && dlgDown === $('dlg')) closeDlg(); dlgDown = null; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.dlg) closeDlg(); });
 const val = id => { const e = $(id); return e ? e.value : ''; };
 const showErr = m => { const e = $('derr'); if (e) { e.textContent = m; e.style.display = ''; } else toast(m, true); };
