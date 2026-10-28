@@ -138,6 +138,14 @@ table.t td.r,table.t th.r{text-align:right}
   .row2,.row3{grid-template-columns:1fr}
 }
 .offacc{border-top:1px solid var(--line)}.offacc summary{cursor:pointer;padding:12px 16px;color:var(--muted);font-size:14px}
+.dp{display:block;position:relative}.f.bad{border-color:var(--bad);background:#fff5f5}
+#dpop{position:fixed;z-index:80;width:260px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(15,30,38,.18);padding:10px;font-size:14px}
+#dpop .dph{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}#dpop .dph b{font-size:14.5px}
+#dpop button{border:0;background:none;font:inherit;cursor:pointer;border-radius:8px;color:var(--ink)}
+#dpop .dph button{width:32px;height:30px;font-size:18px}#dpop .dph button:hover,#dpop .dpg button:hover{background:var(--pri-t)}
+#dpop .dpw,#dpop .dpg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}#dpop .dpw span{font-size:12px;color:var(--muted);padding:4px 0}
+#dpop .dpg button{height:32px}#dpop .dpg button.td{color:var(--pri);font-weight:700;box-shadow:inset 0 0 0 1px var(--pri)}#dpop .dpg button.on{background:var(--pri);color:#fff}
+#dpop .dpf{display:flex;justify-content:space-between;margin-top:6px;border-top:1px solid var(--line2);padding-top:6px}#dpop .dpf button{padding:4px 10px;color:var(--pri);font-weight:600}
 .clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .clock .cd{font-size:13.5px;color:var(--muted)}.clock .ct{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 14px;font-size:20px;font-weight:700;color:var(--pri);font-variant-numeric:tabular-nums;letter-spacing:.5px}
 .top-r{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
@@ -446,13 +454,53 @@ V.structure = () => {
 
 /* ===================== หน้าต่าง (dialog) ===================== */
 function dlg(title, sub, body, foot, w) { S.dlg = S.dlg || {}; $('dlg').innerHTML = '<div class="dlg" style="max-width:' + (w || 720) + 'px" onclick="event.stopPropagation()"><div class="dh"><h2>' + title + '</h2>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div><div class="db">' + body + '</div><div class="df">' + foot + '</div></div>'; $('dlg').className = 'show'; }
-function closeDlg() { S.dlg = null; $('dlg').className = ''; $('dlg').innerHTML = ''; }
+function closeDlg() { dpClose(); S.dlg = null; $('dlg').className = ''; $('dlg').innerHTML = ''; }
 // ปิดเมื่อกดที่พื้นหลังเท่านั้น (กดเริ่มและปล่อยบนพื้นหลัง) · ลากคลุมข้อความในฟอร์มแล้วปล่อยเมาส์นอกกล่องจะไม่ปิด
 let dlgDown = null;
 $('dlg').addEventListener('mousedown', e => { dlgDown = e.target; });
 $('dlg').addEventListener('click', e => { if (e.target === $('dlg') && dlgDown === $('dlg')) closeDlg(); dlgDown = null; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.dlg) closeDlg(); });
 const val = id => { const e = $(id); return e ? e.value : ''; };
+
+/* ----- ช่องวันที่แบบไทย วว/ดด/ปปปป (พ.ศ.) · เก็บค่าจริงเป็น YYYY-MM-DD ในช่องซ่อน ----- */
+const isoToBE = v => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || ''); return m ? m[3] + '/' + m[2] + '/' + (+m[1] + 543) : ''; };
+function beToIso(t) {
+  const m = /^(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})$/.exec((t || '').trim()); if (!m) return null;
+  let d = +m[1], mo = +m[2], y = +m[3]; if (y < 100) y += 2500; if (y < 2400) y += 543; y -= 543;
+  const x = new Date(y, mo - 1, d); if (x.getFullYear() !== y || x.getMonth() !== mo - 1 || x.getDate() !== d) return null;
+  return iso(x);
+}
+const dateInp = (id, v) => '<span class="dp"><input class="f" id="' + id + '_txt" data-dp="' + id + '" value="' + isoToBE(v) + '" placeholder="วว/ดด/ปปปป (พ.ศ.)" autocomplete="off" inputmode="numeric" maxlength="10"><input type="hidden" id="' + id + '" value="' + esc(v || '') + '"></span>';
+const DP = { id: null, y: 0, m: 0 };
+function dpSet(id, v) { $(id).value = v || ''; $(id + '_txt').value = isoToBE(v); $(id + '_txt').classList.remove('bad'); }
+function dpOpen(id) {
+  DP.id = id; const cur = $(id).value || today(), d = new Date(cur + 'T00:00:00'); DP.y = d.getFullYear(); DP.m = d.getMonth(); dpDraw();
+}
+function dpDraw() {
+  let el = $('dpop'); if (!el) { el = document.createElement('div'); el.id = 'dpop'; document.body.appendChild(el); }
+  const inp = $(DP.id + '_txt'); if (!inp) return dpClose(); const r = inp.getBoundingClientRect();
+  const sel = $(DP.id).value, td = today(), first = new Date(DP.y, DP.m, 1).getDay(), n = new Date(DP.y, DP.m + 1, 0).getDate();
+  let cells = ''; for (let i = 0; i < first; i++) cells += '<span></span>';
+  for (let i = 1; i <= n; i++) { const v = iso(new Date(DP.y, DP.m, i)); cells += '<button type="button" class="' + (v === sel ? 'on' : '') + (v === td ? ' td' : '') + '" onmousedown="event.preventDefault()" onclick="TD.dpPick(\'' + v + '\')">' + i + '</button>'; }
+  el.innerHTML = '<div class="dph"><button type="button" onmousedown="event.preventDefault()" onclick="TD.dpNav(-1)">‹</button><b>' + TMF[DP.m] + ' ' + (DP.y + 543) + '</b><button type="button" onmousedown="event.preventDefault()" onclick="TD.dpNav(1)">›</button></div><div class="dpw">' + ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(x => '<span>' + x + '</span>').join('') + '</div><div class="dpg">' + cells + '</div><div class="dpf"><button type="button" onmousedown="event.preventDefault()" onclick="TD.dpPick(\'' + td + '\')">วันนี้</button><button type="button" onmousedown="event.preventDefault()" onclick="TD.dpPick(\'\')">ล้าง</button></div>';
+  const top = r.bottom + 4 + 300 > innerHeight ? Math.max(8, r.top - 304) : r.bottom + 4;
+  el.style.cssText = 'top:' + top + 'px;left:' + Math.min(r.left, innerWidth - 268) + 'px';
+}
+function dpClose() { DP.id = null; const el = $('dpop'); if (el) el.remove(); }
+document.addEventListener('focusin', e => { const id = e.target.dataset && e.target.dataset.dp; if (id) dpOpen(id); });
+document.addEventListener('mousedown', e => { if (DP.id && !e.target.closest('#dpop') && !(e.target.dataset && e.target.dataset.dp)) dpClose(); });
+document.addEventListener('input', e => {
+  const id = e.target.dataset && e.target.dataset.dp; if (!id) return;
+  let t = e.target.value.replace(/[^\d/]/g, '');
+  if (!/^delete/.test(e.inputType || '')) { const ps = t.split('/').slice(0, 3); for (let i = 0; i < 2; i++) if (ps[i] !== undefined && ps[i].length > 2) { const x = ps[i].slice(2); ps[i] = ps[i].slice(0, 2); ps[i + 1] = ps[i + 1] === undefined ? x : x + ps[i + 1]; } if (ps[2]) ps[2] = ps[2].slice(0, 4); t = ps.join('/'); if (ps.length < 3 && ps[ps.length - 1].length === 2) t += '/'; }
+  e.target.value = t; const v = beToIso(t); if (v && /\d{4}$/.test(t)) { $(id).value = v; DP.y = +v.slice(0, 4); DP.m = +v.slice(5, 7) - 1; if (DP.id) dpDraw(); } else if (!t) $(id).value = '';
+});
+document.addEventListener('focusout', e => {
+  const id = e.target.dataset && e.target.dataset.dp; if (!id) return; const t = e.target.value.trim();
+  if (!t) { dpSet(id, ''); return; } const v = beToIso(t); if (v) dpSet(id, v); else e.target.classList.add('bad');
+  setTimeout(() => { if (DP.id === id && document.activeElement !== e.target) dpClose(); }, 0);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && DP.id) { e.stopImmediatePropagation(); dpClose(); } }, true);
 const showErr = m => { const e = $('derr'); if (e) { e.textContent = m; e.style.display = ''; } else toast(m, true); };
 
 /* ----- งาน ----- */
@@ -461,7 +509,7 @@ function taskForm(t) {
   const asg = isHead() ? members() : [S.me];
   return '<div id="derr" class="err" style="display:none"></div><label class="fld">ชื่องาน<input class="f" id="t_title" value="' + esc(t.title || '') + '" placeholder="เช่น จัดทำรายงานประจำเดือน"></label>' +
     '<div class="row2"><label class="fld">งานหลัก / งานย่อย<select class="f" id="t_cat">' + catOptions(t.cat_id) + '</select></label><label class="fld">ผู้รับผิดชอบ<select class="f" id="t_asg">' + (isHead() ? '<option value="">— ยังไม่มอบหมาย —</option>' : '') + asg.map(m => '<option value="' + m.id + '"' + ((t.assignee || (isHead() ? '' : S.me.id)) === m.id ? ' selected' : '') + '>' + esc(m.nickname) + (m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</select></label></div>' +
-    '<div class="row3"><label class="fld">วันเริ่ม<input class="f" type="date" id="t_start" value="' + esc(t.start_date || '') + '"></label><label class="fld">กำหนดส่ง<input class="f" type="date" id="t_due" value="' + esc(t.due_date || '') + '"></label><label class="fld">ความสำคัญ<select class="f" id="t_pr">' + Object.keys(PR).map(k => '<option value="' + k + '"' + ((t.priority || 'normal') === k ? ' selected' : '') + '>' + PR[k][0] + '</option>').join('') + '</select></label></div>' +
+    '<div class="row3"><label class="fld">วันเริ่ม' + dateInp('t_start', t.start_date) + '</label><label class="fld">กำหนดส่ง' + dateInp('t_due', t.due_date) + '</label><label class="fld">ความสำคัญ<select class="f" id="t_pr">' + Object.keys(PR).map(k => '<option value="' + k + '"' + ((t.priority || 'normal') === k ? ' selected' : '') + '>' + PR[k][0] + '</option>').join('') + '</select></label></div>' +
     '<label class="fld">รายละเอียด / สิ่งที่ต้องส่งมอบ<textarea class="f" id="t_detail">' + esc(t.detail || '') + '</textarea></label>';
 }
 function readTask() { return { title: val('t_title').trim(), cat_id: val('t_cat') || null, assignee: val('t_asg') || null, start_date: val('t_start') || null, due_date: val('t_due') || null, priority: val('t_pr') || 'normal', detail: val('t_detail').trim() }; }
@@ -773,6 +821,7 @@ window.TD = {
   ndAddWork: () => { grabDept(); S.dlg.works.push({ name: '', subs: ['', '', ''] }); drawDept(); }, ndAddSub: i => { grabDept(); S.dlg.works[i].subs.push(''); drawDept(); }, ndAddMember: () => { grabDept(); S.dlg.team.push({}); drawDept(); },
   copySum: () => { (navigator.clipboard ? navigator.clipboard.writeText(S.sumText) : Promise.reject()).then(() => toast('คัดลอกแล้ว')).catch(() => prompt('คัดลอกข้อความนี้', S.sumText)); },
   expTasks, expStats,
+  dpPick: v => { const id = DP.id; if (!id) return; dpSet(id, v); dpClose(); }, dpNav: k => { DP.m += k; if (DP.m < 0) { DP.m = 11; DP.y--; } if (DP.m > 11) { DP.m = 0; DP.y++; } dpDraw(); },
   logout: async () => { await sb.auth.signOut(); location.reload(); }
 };
 // ปุ่มยกเลิกในหน้าแก้ไขงาน → กลับไปหน้ารายละเอียดงาน
