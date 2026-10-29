@@ -202,7 +202,7 @@ table.t td.r,table.t th.r{text-align:right}
 .legend{display:flex;gap:14px;font-size:12.5px;color:var(--muted)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 
 /* ===================== หน้าต่าง ===================== */
-#dlg{position:fixed;inset:0;background:rgba(8,10,30,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:36px 16px;overflow:auto;z-index:50}
+#dlg{position:fixed;inset:0;background:rgba(8,10,30,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:none;align-items:flex-start;justify-content:center;padding:36px 16px;overflow:auto;z-index:70}
 #dlg.show{display:flex;animation:fade .18s ease}
 .dlg{background:var(--surface);border:1px solid var(--line);border-radius:22px;width:100%;max-width:720px;box-shadow:var(--sh-3);animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
 .dlg .dh{padding:20px 24px 10px}.dlg .dh h2{margin:0;font-size:20px;font-weight:700}.dlg .dh .sub{color:var(--muted);font-size:13.5px;margin-top:3px}
@@ -447,7 +447,8 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
 window.addEventListener('appinstalled', () => { installEvt = null; toast('ติดตั้งแอป Team Desk แล้ว'); if (S.me) render(true); });
 async function installApp() {
-  if (installEvt) { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; return render(true); }
+  const sd = $('side'); if (sd) sd.classList.remove('open');
+  if (installEvt) { const ev = installEvt; installEvt = null; try { ev.prompt(); const r = await ev.userChoice; if (r && r.outcome === 'accepted') toast('กำลังติดตั้งแอป… ไอคอนจะขึ้นบนหน้าจอในไม่กี่วินาที'); return; } catch (e) {} }
   S.dlg = { type: 'sum' };
   dlg('ติดตั้ง Team Desk บนหน้าจอ', 'ใช้งานเหมือนแอป เปิดได้จากไอคอนบนหน้าจอ', isIOS()
     ? '<ol style="margin:0 0 0 18px;line-height:2"><li>เปิดหน้านี้ด้วย <b>Safari</b></li><li>แตะปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น)</li><li>เลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b> แล้วแตะ <b>เพิ่ม</b></li></ol>'
