@@ -147,6 +147,7 @@ table.t td.r,table.t th.r{text-align:right}
 #dpop .dpg button{height:32px}#dpop .dpg button.td{color:var(--pri);font-weight:700;box-shadow:inset 0 0 0 1px var(--pri)}#dpop .dpg button.on{background:var(--pri);color:#fff}
 #dpop .dpf{display:flex;justify-content:space-between;margin-top:6px;border-top:1px solid var(--line2);padding-top:6px}#dpop .dpf button{padding:4px 10px;color:var(--pri);font-weight:600}
 .extb{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:center;background:#f3eef8;border:1px solid #ddd0ea;color:#4d3a66;border-radius:12px;padding:10px 14px;margin-bottom:16px;font-size:14px}.extb span{font-size:12.5px;color:#7a6890}
+.pwrow{display:flex;gap:8px;align-items:center}.pwrow .f{flex:1}
 .clock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .clock .cd{font-size:13.5px;color:var(--muted)}.clock .ct{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 14px;font-size:20px;font-weight:700;color:var(--pri);font-variant-numeric:tabular-nums;letter-spacing:.5px}
 .top-r{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
@@ -624,11 +625,13 @@ async function saveMember(id) {
 }
 function pwDialog(id, self) {
   const m = memberBy(id); S.dlg = { type: 'pw' };
-  dlg(self ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่านใหม่', esc(m.nickname + ' · ' + m.username), '<div id="derr" class="err" style="display:none"></div><label class="fld">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)<input class="f" id="pw1" type="' + (self ? 'password' : 'text') + '" value="' + (self ? '' : genPw()) + '" autocomplete="new-password"></label>' + (self ? '<label class="fld">ยืนยันรหัสผ่านใหม่<input class="f" id="pw2" type="password" autocomplete="new-password"></label>' : '<div class="note">แจ้งรหัสผ่านใหม่ให้เจ้าตัว แล้วให้เปลี่ยนเองหลังเข้าระบบ</div>'),
+  dlg(self ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่านใหม่', esc(m.nickname + ' · ' + m.username), '<div id="derr" class="err" style="display:none"></div><input type="text" name="username" autocomplete="username" value="' + esc(m.username) + '" style="display:none">' +
+    '<label class="fld">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)<span class="pwrow"><input class="f" id="pw1" type="' + (self ? 'password' : 'text') + '" value="' + (self ? '' : genPw()) + '" autocomplete="new-password"' + (self ? ' readonly onfocus="this.removeAttribute(\'readonly\')"' : '') + '>' + (self ? '<button type="button" class="btn sm ghost" onclick="TD.pwShow()">แสดง</button>' : '') + '</span></label>' +
+    (self ? '<label class="fld">ยืนยันรหัสผ่านใหม่ (พิมพ์ซ้ำอีกครั้ง)<input class="f" id="pw2" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute(\'readonly\')"></label><div class="note">ถ้าช่องมีจุด ●●● ขึ้นมาเอง (เบราว์เซอร์เติมรหัสเดิมให้) ให้ลบออกแล้วพิมพ์รหัสใหม่ทั้ง 2 ช่อง</div>' : '<div class="note">แจ้งรหัสผ่านใหม่ให้เจ้าตัว แล้วให้เปลี่ยนเองหลังเข้าระบบ</div>'),
     '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.savePw(\'' + id + '\',' + !!self + ')">บันทึกรหัสผ่าน</button>', 480);
 }
 async function savePw(id, self) {
-  const p = val('pw1'); if (p.length < 6) return showErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); if (self && p !== val('pw2')) return showErr('รหัสผ่านทั้ง 2 ช่องไม่ตรงกัน');
+  const p = val('pw1').trim(); if (self && $('pw2')) $('pw2').value = $('pw2').value.trim(); if (p.length < 6) return showErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); if (self && p !== val('pw2')) return showErr('รหัสผ่านทั้ง 2 ช่องไม่ตรงกัน · กด "แสดง" เพื่อตรวจ แล้วพิมพ์ใหม่ทั้ง 2 ช่อง');
   const { error } = await sb.rpc('td_set_password', { p_member: id, p_password: p }); if (error) return showErr(error.message);
   closeDlg(); if (self) toast('เปลี่ยนรหัสผ่านแล้ว'); else alert('ตั้งรหัสผ่านใหม่แล้ว\n\nชื่อผู้ใช้: ' + memberBy(id).username + '\nรหัสผ่าน: ' + p);
 }
@@ -844,7 +847,7 @@ window.TD = {
   q: v => { S.f.q = v; const pos = $('fq').selectionStart; render(true); const e = $('fq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   stat: o => { Object.assign(S.stat, o); render(true); },
   newTask, saveNew, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
-  newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => pwDialog(S.me.id, true), pwOther: id => pwDialog(id, false), savePw,
+  newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => { pwDialog(S.me.id, true); [60, 400, 900].forEach(t => setTimeout(() => { ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e && e.hasAttribute('readonly')) e.value = ''; }); }, t)); }, pwShow: () => ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e) e.type = e.type === 'password' ? 'text' : 'password'; }), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
   extLink, extUnlink, newDivision, renameDiv, moveDept, newLeader, saveLeader, bulk, bulkTemplate, bulkFile, bulkSave, sumCsv: () => download('บัญชีผู้ใช้_TeamDesk.csv', csv(S.sumRows || [])),
   ndAddWork: () => { grabDept(); S.dlg.works.push({ name: '', subs: ['', '', ''] }); drawDept(); }, ndAddSub: i => { grabDept(); S.dlg.works[i].subs.push(''); drawDept(); }, ndAddMember: () => { grabDept(); S.dlg.team.push({}); drawDept(); },
