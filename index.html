@@ -377,7 +377,7 @@ async function gate(mode, err) {
   let setup = false; try { const r = await sb.rpc('td_setup_needed'); setup = !!r.data; } catch (e) {}
   if (setup) mode = 'setup';
   $('app').innerHTML = '<div class="gate"><div class="box"><div class="glogo">' + ico('logo') + '</div><h1>Team Desk</h1><div class="sub">' + esc(CF.ORG_NAME || '') + ' · ระบบมอบหมายและติดตามงาน</div>' + (err ? '<div class="err" style="margin-bottom:12px">' + esc(err) + '</div>' : '') +
-    (mode === 'setup' ? '<div class="note" style="margin-bottom:12px">ตั้งค่าครั้งแรก: สร้างบัญชีผู้ดูแลระบบ (สร้างได้ครั้งเดียว)</div><form id="gf"><input class="f" name="u" placeholder="ชื่อผู้ใช้ (a-z, 0-9)" autocomplete="username" required><input class="f" name="n" placeholder="ชื่อที่แสดง" required><input class="f" name="p" type="password" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)" autocomplete="new-password" required><input class="f" name="p2" type="password" placeholder="ยืนยันรหัสผ่าน" autocomplete="new-password" required><button class="btn pri" style="height:46px">สร้างบัญชีผู้ดูแลระบบ</button></form>'
+    (mode === 'setup' ? '<div class="note" style="margin-bottom:12px">ตั้งค่าครั้งแรก: สร้างบัญชีผู้ดูแลระบบ (สร้างได้ครั้งเดียว)</div><form id="gf"><input class="f" name="u" placeholder="ชื่อผู้ใช้ (a-z, 0-9)" autocomplete="username" required><input class="f" name="n" placeholder="ชื่อที่แสดง" required><input class="f" name="p" type="password" placeholder="รหัสผ่าน (อย่างน้อย 5 ตัว)" autocomplete="new-password" required><input class="f" name="p2" type="password" placeholder="ยืนยันรหัสผ่าน" autocomplete="new-password" required><button class="btn pri" style="height:46px">สร้างบัญชีผู้ดูแลระบบ</button></form>'
       : '<form id="gf"><input class="f" name="u" placeholder="ชื่อผู้ใช้" autocomplete="username" autocapitalize="none" required><input class="f" name="p" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" required><button class="btn pri" style="height:46px">เข้าสู่ระบบ</button></form><div class="mu" style="margin-top:14px">ลืมรหัสผ่าน ติดต่อหัวหน้าแผนกหรือผู้ดูแลระบบเพื่อตั้งรหัสใหม่</div>') + '</div></div>';
   $('gf').onsubmit = async ev => {
     ev.preventDefault(); const f = Object.fromEntries(new FormData(ev.target)); const u = String(f.u || '').trim().toLowerCase(); const btn = ev.target.querySelector('button'); btn.disabled = true;
@@ -848,12 +848,12 @@ async function saveMember(id) {
 function pwDialog(id, self) {
   const m = memberBy(id); S.dlg = { type: 'pw' };
   dlg(self ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่านใหม่', esc(m.nickname + ' · ' + m.username), '<div id="derr" class="err" style="display:none"></div><input type="text" name="username" autocomplete="username" value="' + esc(m.username) + '" style="display:none">' +
-    '<label class="fld">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)<span class="pwrow"><input class="f" id="pw1" type="' + (self ? 'password' : 'text') + '" value="' + (self ? '' : genPw()) + '" autocomplete="new-password"' + (self ? ' readonly onfocus="this.removeAttribute(\'readonly\')"' : '') + '>' + (self ? '<button type="button" class="btn sm ghost" onclick="TD.pwShow()">แสดง</button>' : '') + '</span></label>' +
+    '<label class="fld">รหัสผ่านใหม่ (อย่างน้อย 5 ตัว)<span class="pwrow"><input class="f" id="pw1" type="' + (self ? 'password' : 'text') + '" value="' + (self ? '' : genPw()) + '" autocomplete="new-password"' + (self ? ' readonly onfocus="this.removeAttribute(\'readonly\')"' : '') + '>' + (self ? '<button type="button" class="btn sm ghost" onclick="TD.pwShow()">แสดง</button>' : '') + '</span></label>' +
     (self ? '<label class="fld">ยืนยันรหัสผ่านใหม่ (พิมพ์ซ้ำอีกครั้ง)<input class="f" id="pw2" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute(\'readonly\')"></label><div class="note">ถ้าช่องมีจุด ●●● ขึ้นมาเอง (เบราว์เซอร์เติมรหัสเดิมให้) ให้ลบออกแล้วพิมพ์รหัสใหม่ทั้ง 2 ช่อง</div>' : '<div class="note">แจ้งรหัสผ่านใหม่ให้เจ้าตัว แล้วให้เปลี่ยนเองหลังเข้าระบบ</div>'),
     '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.savePw(\'' + id + '\',' + !!self + ')">บันทึกรหัสผ่าน</button>', 480);
 }
 async function savePw(id, self) {
-  const p = val('pw1').trim(); if (self && $('pw2')) $('pw2').value = $('pw2').value.trim(); if (p.length < 6) return showErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); if (self && p !== val('pw2')) return showErr('รหัสผ่านทั้ง 2 ช่องไม่ตรงกัน · กด "แสดง" เพื่อตรวจ แล้วพิมพ์ใหม่ทั้ง 2 ช่อง');
+  const p = val('pw1').trim(); if (self && $('pw2')) $('pw2').value = $('pw2').value.trim(); if (p.length < 5) return showErr('รหัสผ่านต้องมีอย่างน้อย 5 ตัวอักษร'); if (self && p !== val('pw2')) return showErr('รหัสผ่านทั้ง 2 ช่องไม่ตรงกัน · กด "แสดง" เพื่อตรวจ แล้วพิมพ์ใหม่ทั้ง 2 ช่อง');
   const { error } = await sb.rpc('td_set_password', { p_member: id, p_password: p }); if (error) return showErr(error.message);
   closeDlg(); if (self) toast('เปลี่ยนรหัสผ่านแล้ว'); else alert('ตั้งรหัสผ่านใหม่แล้ว\n\nชื่อผู้ใช้: ' + memberBy(id).username + '\nรหัสผ่าน: ' + p);
 }
@@ -941,7 +941,7 @@ async function saveDeptNew() {
   grabDept(); const d = S.dlg;
   if (!d.name.trim()) return drawDept('กรุณาใส่ชื่อแผนก');
   const ppl = [d.head].concat(d.team).filter(m => (m.username || '').trim() || (m.nickname || '').trim());
-  for (const m of ppl) { if (!m.username.trim() || !m.nickname.trim()) return drawDept('สมาชิกทุกคนต้องมีทั้งชื่อที่แสดงและชื่อผู้ใช้ (' + (m.nickname || m.username) + ')'); if (!/^[a-z0-9._-]{2,30}$/.test(m.username.trim().toLowerCase())) return drawDept('ชื่อผู้ใช้ "' + m.username + '" ใช้ได้เฉพาะ a-z 0-9 . _ -'); if ((m.password || '').length < 6) return drawDept('รหัสผ่านของ ' + m.username + ' ต้องมีอย่างน้อย 6 ตัว'); }
+  for (const m of ppl) { if (!m.username.trim() || !m.nickname.trim()) return drawDept('สมาชิกทุกคนต้องมีทั้งชื่อที่แสดงและชื่อผู้ใช้ (' + (m.nickname || m.username) + ')'); if (!/^[a-z0-9._-]{2,30}$/.test(m.username.trim().toLowerCase())) return drawDept('ชื่อผู้ใช้ "' + m.username + '" ใช้ได้เฉพาะ a-z 0-9 . _ -'); if ((m.password || '').length < 5) return drawDept('รหัสผ่านของ ' + m.username + ' ต้องมีอย่างน้อย 5 ตัว'); }
   const names = ppl.map(m => m.username.trim().toLowerCase()); if (new Set(names).size !== names.length) return drawDept('มีชื่อผู้ใช้ซ้ำกันในฟอร์ม');
   const clean = m => ({ nickname: m.nickname.trim(), full_name: (m.full_name || '').trim(), position: (m.position || '').trim(), username: m.username.trim().toLowerCase(), password: m.password });
   const p = { name: d.name.trim(), division_id: d.div || '', works: d.works.filter(w => w.name.trim()).map(w => ({ name: w.name.trim(), subs: w.subs.filter(s => s.trim()) })), head: (d.head.username || '').trim() ? clean(d.head) : null, members: d.team.filter(m => (m.username || '').trim()).map(clean) };
@@ -982,7 +982,7 @@ async function saveLeader(role) {
   const p = { role, nickname: val('m_nick').trim(), full_name: val('m_full').trim(), position: val('m_pos').trim(), username: val('m_user').trim().toLowerCase(), password: val('m_pw'), division_id: role === 'division' ? val('l_div') : '' };
   if (!p.nickname || !p.username) return showErr('กรุณาใส่ชื่อที่แสดงและชื่อผู้ใช้');
   if (!/^[a-z0-9._-]{2,30}$/.test(p.username)) return showErr('ชื่อผู้ใช้ใช้ได้เฉพาะ a-z 0-9 . _ -');
-  if (p.password.length < 6) return showErr('รหัสผ่านต้องมีอย่างน้อย 6 ตัว');
+  if (p.password.length < 5) return showErr('รหัสผ่านต้องมีอย่างน้อย 5 ตัว');
   const { error } = await sb.rpc('td_create_leader', { p }); if (error) return showErr(error.message);
   closeDlg(); await load('members'); render(true);
   alert('สร้างบัญชี' + ROLE_TH[role] + 'แล้ว\n\nชื่อผู้ใช้: ' + p.username + '\nรหัสผ่าน: ' + p.password);
@@ -1034,7 +1034,7 @@ async function bulkFile(f) {
     else if (!/^[a-z0-9._-]{2,30}$/.test(x.username)) x.err = 'ชื่อผู้ใช้ใช้ได้เฉพาะ a-z 0-9 . _ -';
     else if (used.has(x.username)) x.err = 'ชื่อผู้ใช้มีในระบบแล้ว';
     else if (seen.has(x.username)) x.err = 'ชื่อผู้ใช้ซ้ำในไฟล์';
-    else if (x.password.length < 6) x.err = 'รหัสผ่านสั้นกว่า 6 ตัว';
+    else if (x.password.length < 5) x.err = 'รหัสผ่านสั้นกว่า 5 ตัว';
     if (x.role === 'office') x.unit = x.unit || office;
     seen.add(x.username); out.push(x);
   });
