@@ -23,7 +23,7 @@
 --bg:#f3f5fc;--surface:#ffffff;--surface-2:#f6f7fd;--surface-3:#eceffa;--ink:#141933;--muted:#646b88;--line:#e3e6f2;--line2:#eef0f8;
 --pri:#5b5bf6;--pri-d:#4338ca;--pri-t:#eceeff;--pri-ink:#3d3ad6;--accent:#0ea5b7;
 --grad:linear-gradient(135deg,#6366f1 0%,#8b5cf6 52%,#d946ef 100%);--grad-soft:linear-gradient(135deg,rgba(99,102,241,.12),rgba(217,70,239,.10));
---todo:#64708a;--todo-t:#eef1f7;--doing:#2563eb;--doing-t:#e6eeff;--review:#c2700b;--review-t:#fff3df;--done:#059669;--done-t:#e1f7ee;--cancel:#8b90a0;--cancel-t:#f0f1f5;
+--todo:#64708a;--todo-t:#eef1f7;--doing:#2563eb;--doing-t:#e6eeff;--review:#c2700b;--review-t:#fff3df;--sign:#7c3aed;--sign-t:#f1e9ff;--done:#059669;--done-t:#e1f7ee;--cancel:#8b90a0;--cancel-t:#f0f1f5;
 --bad:#e11d48;--bad-t:#ffe8ee;--warn:#d97706;--warn-t:#fff3df;
 --a-t:#fff4df;--a-ink:#b06a00;--b-t:#e8efff;--b-ink:#2d5bd6;--c-t:#dff7ec;--c-ink:#04875a;
 --ext-t:#f3edff;--ext-ink:#5b3fa0;--ext-line:#e1d6fb;--chart-a:#b7c0fb;
@@ -35,7 +35,7 @@
 --bg:#0a0d1d;--surface:#131834;--surface-2:#181e3e;--surface-3:#20274c;--ink:#e8eaf8;--muted:#9da3c6;--line:#252c52;--line2:#1d2346;
 --pri:#8b8cff;--pri-d:#6d6cf7;--pri-t:rgba(139,140,255,.16);--pri-ink:#b4b5ff;--accent:#22d3ee;
 --grad-soft:linear-gradient(135deg,rgba(99,102,241,.22),rgba(217,70,239,.16));
---todo:#a7aec8;--todo-t:rgba(167,174,200,.13);--doing:#7aa7ff;--doing-t:rgba(96,140,255,.16);--review:#fbbf4b;--review-t:rgba(251,191,75,.14);--done:#34d399;--done-t:rgba(52,211,153,.14);--cancel:#8b90a8;--cancel-t:rgba(139,144,168,.14);
+--todo:#a7aec8;--todo-t:rgba(167,174,200,.13);--doing:#7aa7ff;--doing-t:rgba(96,140,255,.16);--review:#fbbf4b;--review-t:rgba(251,191,75,.14);--sign:#c4a5ff;--sign-t:rgba(167,125,255,.16);--done:#34d399;--done-t:rgba(52,211,153,.14);--cancel:#8b90a8;--cancel-t:rgba(139,144,168,.14);
 --bad:#fb7185;--bad-t:rgba(251,113,133,.15);--warn:#fbbf4b;--warn-t:rgba(251,191,75,.14);
 --a-t:rgba(251,191,75,.13);--a-ink:#fcc75e;--b-t:rgba(96,140,255,.15);--b-ink:#8fb3ff;--c-t:rgba(52,211,153,.13);--c-ink:#4ade9f;
 --ext-t:rgba(167,139,250,.14);--ext-ink:#c4b2ff;--ext-line:rgba(167,139,250,.28);--chart-a:#4b56b8;
@@ -142,11 +142,13 @@ textarea.f{height:auto;min-height:84px;padding:10px 12px;resize:vertical;width:1
 .extb{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:center;background:var(--ext-t);border:1px solid var(--ext-line);color:var(--ext-ink);border-radius:14px;padding:11px 16px;margin-bottom:18px;font-size:14px}.extb span{font-size:12.5px;opacity:.8}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
 .pill.ext{background:var(--ext-t);color:var(--ext-ink)}
-.pill.otag{background:var(--grad-soft,var(--pri-t));color:var(--pri-ink,var(--pri));font-weight:600}
-.obar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;background:var(--pri-t);border:1px solid var(--pri);color:var(--pri-ink,var(--ink));border-radius:12px;padding:10px 14px;font-size:14px}.obar b{font-weight:700}
+.duehd{display:flex;align-items:center;justify-content:space-between;gap:8px}.nodue{display:inline-flex;align-items:center;gap:5px;font-weight:400;font-size:12.5px;color:var(--muted);cursor:pointer}.nodue input{margin:0;accent-color:var(--pri)}
+.dp input:disabled{opacity:.55;cursor:not-allowed}
+.pill.otag{background:color-mix(in srgb,var(--bad) 13%,transparent);color:var(--bad);font-weight:700}
+.obar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;background:color-mix(in srgb,var(--bad) 10%,transparent);border:1px solid color-mix(in srgb,var(--bad) 55%,transparent);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:14px}.obar b{font-weight:700}
 .chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}.chain .ar{color:var(--muted)}
 .fwdbox{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border:1px dashed var(--pri);border-radius:12px;padding:10px 14px}
-.st-todo{background:var(--todo-t);color:var(--todo)}.st-doing{background:var(--doing-t);color:var(--doing)}.st-review{background:var(--review-t);color:var(--review)}.st-done{background:var(--done-t);color:var(--done)}.st-cancel{background:var(--cancel-t);color:var(--cancel)}
+.st-todo{background:var(--todo-t);color:var(--todo)}.st-doing{background:var(--doing-t);color:var(--doing)}.st-review{background:var(--review-t);color:var(--review)}.st-sign{background:var(--sign-t);color:var(--sign)}.st-done{background:var(--done-t);color:var(--done)}.st-cancel{background:var(--cancel-t);color:var(--cancel)}
 .pr-urgent{background:var(--bad-t);color:var(--bad)}.pr-high{background:var(--warn-t);color:var(--warn)}.pr-low{background:var(--line2);color:var(--muted)}
 .due-bad{background:var(--bad-t);color:var(--bad)}.due-soon{background:var(--warn-t);color:var(--warn)}.due-ok{background:var(--line2);color:var(--muted)}
 .av{object-fit:cover;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;flex:none}
@@ -164,7 +166,7 @@ table.t tr.clk{cursor:pointer}table.t tr.clk:hover td{background:var(--surface-2
 table.t td.r,table.t th.r{text-align:right}
 
 /* ===================== บอร์ดงาน ===================== */
-.board{display:grid;grid-template-columns:repeat(4,minmax(250px,1fr));gap:16px;align-items:start;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:16px;align-items:start;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
 .col{background:var(--surface-3);border-radius:var(--r);padding:12px;min-height:140px;scroll-snap-align:start;border:1px solid var(--line2)}
 .col h3{margin:2px 4px 12px;font-size:14px;display:flex;align-items:center;gap:8px}
 .tcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:10px;cursor:pointer;box-shadow:var(--sh-1);transition:transform .15s,box-shadow .15s,border-color .15s}
@@ -251,7 +253,7 @@ input[type=range]{accent-color:var(--pri)}
 /* ===================== แท็บเล็ต ===================== */
 @media (max-width:1180px) and (min-width:861px){
   .side{width:228px}.main{padding:22px 22px 48px}
-  .board{grid-template-columns:repeat(4,minmax(230px,1fr))}
+  .board{grid-template-columns:repeat(5,minmax(220px,1fr))}
 }
 /* ===================== มือถือ ===================== */
 @media (max-width:860px){
@@ -275,7 +277,7 @@ input[type=range]{accent-color:var(--pri)}
   .grid2{grid-template-columns:1fr;gap:16px}
   .stack{gap:16px}
   .card{border-radius:18px}.card-h{padding:14px 16px}.card-b{padding:14px 16px}
-  .board{grid-template-columns:repeat(4,86vw);gap:12px;margin:0 -14px;padding:0 14px 6px;scroll-padding:0 14px}
+  .board{grid-template-columns:repeat(5,86vw);gap:12px;margin:0 -14px;padding:0 14px 6px;scroll-padding:0 14px}
   .row2,.row3{grid-template-columns:1fr}
   .tb{grid-template-columns:repeat(2,1fr);gap:12px}
   .pc{padding:0 10px 12px;border-radius:18px}.pc .bn{height:54px;margin:0 -10px}.pc .ring{width:78px;height:78px;margin-top:-40px}.pc .ring .av{width:68px!important;height:68px!important;font-size:28px!important}
@@ -328,7 +330,7 @@ const today = () => iso(new Date());
 const fd = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? (+m[3]) + ' ' + TM[+m[2] - 1] + ' ' + String(+m[1] + 543).slice(2) : ''; };
 const fdt = s => { if (!s) return ''; const d = new Date(s); return fd(iso(d)) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
 const days = s => Math.round((new Date(s + 'T00:00:00') - new Date(today() + 'T00:00:00')) / 864e5);
-const ST = { todo: ['รอดำเนินการ', 'st-todo'], doing: ['กำลังทำ', 'st-doing'], review: ['รอตรวจ', 'st-review'], done: ['เสร็จแล้ว', 'st-done'], cancel: ['ยกเลิก', 'st-cancel'] };
+const ST = { todo: ['รอดำเนินการ', 'st-todo'], doing: ['กำลังทำ', 'st-doing'], review: ['รอตรวจ', 'st-review'], sign: ['อยู่ระหว่างเสนอลงนาม', 'st-sign'], done: ['เสร็จแล้ว', 'st-done'], cancel: ['ยกเลิก', 'st-cancel'] };
 const PR = { urgent: ['ด่วนมาก', 'pr-urgent'], high: ['ด่วน', 'pr-high'], normal: ['ปกติ', ''], low: ['ไม่เร่ง', 'pr-low'] };
 const PAL = ['#1f6f78', '#b5476b', '#6a4fb3', '#c47a15', '#2b6cb0', '#23794e', '#a33a3a', '#4d6b2f', '#7a4e2d', '#3b5b8c'];
 const S = { me: null, dept: null, view: 'dash', d: { divisions: [], depts: [], members: [], cats: [], tasks: [], updates: [] }, f: { q: '', who: '', cat: '', st: 'open' }, stat: { y: new Date().getFullYear(), m: 'all' }, dlg: null };
@@ -379,7 +381,7 @@ const mgrTask = t => t.dept_id ? headOf(t.dept_id) : (isTop() || (isDiv() && t.d
 const canEditTask = t => !isExt(t.dept_id) && (mgrTask(t) || t.assignee === S.me.id || t.created_by === S.me.id);
 const canFwd = t => isOpen(t) && S.me.role !== 'staff' && !isExt(t.dept_id) && (t.assignee === S.me.id || mgrTask(t)) && fwdTargets(t).length > 0;
 const FROM_TH = { office: 'หัวหน้าสำนักงาน', division: 'หัวหน้ากอง' };
-const originOf = t => { const o = memberBy(t.origin_by); return o && FROM_TH[o.role] ? o : null; };
+const originOf = t => { if (t.ext_id) return null; const o = memberBy(t.origin_by || t.created_by); return o && FROM_TH[o.role] ? o : null; };
 const orgTag = t => { const o = originOf(t); return o ? ' <span class="pill otag">📌 จาก' + FROM_TH[o.role] + '</span>' : ''; };
 const unitName = t => t.dept_id ? (deptBy(t.dept_id) || {}).name || '' : ((divBy(t.division_id) || {}).name || 'กอง') + ' · รอส่งต่อลงแผนก';
 // สายการมอบหมาย: ผู้สั่ง → (ผู้ส่งต่อ → ผู้รับ)… → ผู้รับผิดชอบปัจจุบัน
@@ -553,7 +555,7 @@ V.dash = () => {
   const recent = S.d.updates.filter(u => u.dept_id === S.dept).slice(-12).reverse();
   const tRow = t => '<tr class="clk" onclick="TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b>' + orgTag(t) + '<div class="mu">' + esc(catPath(t)) + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + duePill(t) + '</td><td>' + stPill(t.status) + '</td></tr>';
   return '<div class="stack"><div class="tiles">' +
-    tile('งานที่ยังไม่เสร็จ', open.length, 'กำลังทำ ' + open.filter(t => t.status === 'doing').length + ' · รอตรวจ ' + open.filter(t => t.status === 'review').length, 'var(--doing)', "TD.go('board')") +
+    tile('งานที่ยังไม่เสร็จ', open.length, 'กำลังทำ ' + open.filter(t => t.status === 'doing').length + ' · รอตรวจ ' + open.filter(t => t.status === 'review').length + ' · เสนอลงนาม ' + open.filter(t => t.status === 'sign').length, 'var(--doing)', "TD.go('board')") +
     tile('เกินกำหนด', over.length, 'งานที่เลยวันส่งแล้วยังไม่เสร็จ', 'var(--bad)', "TD.filt({st:'over'})") +
     tile('ครบกำหนดใน 7 วัน', soon.length, 'เตรียมติดตาม', 'var(--warn)', '') +
     tile('เสร็จเดือนนี้', doneM.length, TMF[new Date().getMonth()] + ' ' + (new Date().getFullYear() + 543), 'var(--done)', "TD.go('stats')") +
@@ -595,7 +597,7 @@ V.board = () => {
   const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
   const col = s => { const ts = list.filter(t => t.status === s && (s !== 'done' || (t.done_at || '') >= cutoff)).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'));
     return '<div class="col"><h3>' + stPill(s) + '<span class="mu">' + ts.length + '</span></h3>' + (ts.map(card).join('') || '<div class="mu" style="padding:8px">—</div>') + '</div>'; };
-  return filterBar(false) + '<div class="board">' + ['todo', 'doing', 'review', 'done'].map(col).join('') + '</div><div class="mu" style="margin-top:10px">คอลัมน์ "เสร็จแล้ว" แสดงเฉพาะ 30 วันล่าสุด · งานทั้งหมดดูได้ที่หน้า "งานทั้งหมด"</div>';
+  return filterBar(false) + '<div class="board">' + ['todo', 'doing', 'review', 'sign', 'done'].map(col).join('') + '</div><div class="mu" style="margin-top:10px">คอลัมน์ "เสร็จแล้ว" แสดงเฉพาะ 30 วันล่าสุด · งานทั้งหมดดูได้ที่หน้า "งานทั้งหมด"</div>';
 };
 const card = t => '<div class="tcard" onclick="TD.openTask(\'' + t.id + '\')"><div class="tt">' + esc(t.title) + '</div><div class="mu">' + esc(catPath(t)) + '</div><div class="meta">' + who(memberBy(t.assignee)) + duePill(t) + prPill(t.priority) + orgTag(t) + '</div>' + (t.status === 'doing' || t.progress ? '<div style="margin-top:8px">' + progBar(t.progress) + '</div>' : '') + '</div>';
 
@@ -678,7 +680,7 @@ V.org = () => {
   const over = S.d.tasks.filter(t => isOver(t) && sc.some(d => d.id === t.dept_id)).sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 12);
   return '<div class="stack"><div class="tiles">' + (isTop() ? tile('กอง', S.d.divisions.length, 'หัวหน้ากอง ' + leaders('division').length + ' คน', 'var(--pri)') : '') + tile('แผนก', sc.length, 'สมาชิก ' + tot.members + ' คน', 'var(--todo)') + tile('งานค้าง', tot.open, 'ทุกแผนกในความดูแล', 'var(--doing)') + tile('เกินกำหนด', tot.over, 'ต้องติดตาม', 'var(--bad)') + tile('เสร็จเดือนนี้', tot.doneM, TMF[new Date().getMonth()] + ' ' + (new Date().getFullYear() + 543), 'var(--done)') + '</div>' +
     groups.map(g => { const v = divBy(g.k), s2 = sumOf(g.rows), dh = S.d.members.filter(m => m.role === 'division' && m.active && m.division_id === g.k);
-      return '<section class="card"><div class="card-h"><div><h2>' + esc(v ? v.name : 'ขึ้นตรงสำนักงาน') + '</h2><div class="mu">' + (v ? 'หัวหน้ากอง: ' + (dh.map(m => av(m, 20) + ' ' + esc(m.nickname)).join(', ') || '—') : 'หัวหน้าสำนักงาน: ' + (leaders('office').map(m => esc(m.nickname)).join(', ') || '—')) + '</div></div><span class="mu">' + g.rows.length + ' แผนก · ค้าง ' + s2.open + ' · เกินกำหนด ' + s2.over + ' · เสร็จเดือนนี้ ' + s2.doneM + '</span></div><div class="tw"><table class="t">' + head + '<tbody>' + g.rows.map(dRow).join('') + '</tbody></table></div></section>'; }).join('') +
+      return '<section class="card"><div class="card-h"><div><h2>' + esc(v ? v.name : 'ขึ้นตรงสำนักงาน') + '</h2><div class="mu">' + (v ? 'หัวหน้ากอง: ' + (dh.map(m => '<span class="clk" onclick="TD.person(\'' + m.id + '\')" title="ดูงาน / มอบหมายงาน">' + av(m, 20) + ' <u>' + esc(m.nickname) + '</u></span>').join(', ') || '—') : 'หัวหน้าสำนักงาน: ' + (leaders('office').map(m => esc(m.nickname)).join(', ') || '—')) + '</div></div><span class="mu">' + g.rows.length + ' แผนก · ค้าง ' + s2.open + ' · เกินกำหนด ' + s2.over + ' · เสร็จเดือนนี้ ' + s2.doneM + '</span></div><div class="tw"><table class="t">' + head + '<tbody>' + g.rows.map(dRow).join('') + '</tbody></table></div></section>'; }).join('') +
     (() => { const ct = sortTasks(S.d.tasks.filter(t => originOf(t) && isOpen(t) && (t.dept_id ? sc.some(d => d.id === t.dept_id) : true)));
       return '<section class="card"><div class="card-h"><div><h2>📌 งานตามสายบังคับบัญชา</h2><div class="mu">งานที่หัวหน้าสำนักงาน/หัวหน้ากองมอบหมาย · ติดตามว่าอยู่ชั้นไหนแล้ว</div></div><span class="mu">' + ct.length + ' งานค้าง</span></div><div class="tw">' +
         (ct.length ? '<table class="t"><thead><tr><th>งาน</th><th>สายการมอบหมาย</th><th>ขั้นตอน</th><th>กำหนดส่ง</th></tr></thead><tbody>' + ct.map(t => '<tr class="clk" onclick="' + (t.dept_id ? 'TD.setDept(\'' + t.dept_id + '\');' : '') + 'TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b>' + orgTag(t) + '<div class="mu">' + esc(unitName(t)) + '</div></td><td>' + chainHtml(t) + '</td><td>' + stageOf(t) + '</td><td>' + (duePill(t) || '<span class="mu">—</span>') + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">ยังไม่มีงานค้าง · กด "+ มอบหมายงาน" เพื่อสั่งงาน</div>') + '</div></section>'; })() +
@@ -707,7 +709,7 @@ V.teamall = () => {
       (offs.map(m => oCard(m, allSt, 'หัวหน้าสำนักงาน · รวมทุกแผนก', true, '')).join('') || '<div class="mu">ยังไม่มีบัญชีหัวหน้าสำนักงาน</div>') + '</div></div></section>' : '') +
     groups.map(g => { const v = divBy(g.k), dh = act.filter(m => m.role === 'division' && m.division_id === g.k), gSt = pStat(scT.filter(t => g.list.some(d => d.id === t.dept_id)));
       return '<section class="card"><div class="card-h"><div><h2>' + esc(v ? v.name : 'ขึ้นตรงสำนักงาน') + '</h2><div class="mu">' + g.list.length + ' แผนก · ' + act.filter(m => g.list.some(d => d.id === m.dept_id)).length + ' คน</div></div></div><div class="card-b">' +
-        (v ? '<div class="otb lead" style="margin-bottom:14px">' + (dh.map(m => oCard(m, gSt, 'หัวหน้ากอง · รวมทั้งกอง', true, '')).join('') || '<div class="mu">ยังไม่มีหัวหน้ากอง</div>') + '</div>' : '') +
+        (v ? '<div class="otb lead" style="margin-bottom:14px">' + (dh.map(m => oCard(m, gSt, 'หัวหน้ากอง · รวมทั้งกอง', true, go(m))).join('') || '<div class="mu">ยังไม่มีหัวหน้ากอง</div>') + '</div>' : '') +
         g.list.map(deptBlock).join('') + '</div></section>'; }).join('') +
     '<div class="mu">ตัวเลขของหัวหน้าสำนักงาน/หัวหน้ากอง = งานรวมของหน่วยงานที่ดูแล · ของหัวหน้าแผนกและน้อง ๆ = งานที่ได้รับมอบหมายของคนนั้น</div></div>';
 };
@@ -816,15 +818,17 @@ function taskForm(t) {
     : '<label class="fld">ผู้รับผิดชอบ<select class="f" id="t_asg">' + (isHead() ? '<option value="">— ยังไม่มอบหมาย —</option>' : '') + asg.map(m => '<option value="' + m.id + '"' + ((t.assignee || (isHead() ? '' : S.me.id)) === m.id ? ' selected' : '') + '>' + esc(m.nickname) + (m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</select></label>';
   const catFld = '<label class="fld">งานหลัก / งานย่อย<select class="f" id="t_cat">' + catOptions(t.cat_id, pick ? (did || '__none__') : null) + '</select></label>';
   if (pick) setTimeout(asgChg, 0);
+  if (t.id && !t.due_date) setTimeout(() => noDue(true), 0);
   return '<div id="derr" class="err" style="display:none"></div><label class="fld">ชื่องาน<input class="f" id="t_title" value="' + esc(t.title || '') + '" placeholder="เช่น จัดทำรายงานประจำเดือน"></label>' +
     (pick ? asgFld + catFld : '<div class="row2">' + catFld + asgFld + '</div>') +
-    '<div class="row3"><label class="fld">วันเริ่ม' + dateInp('t_start', t.start_date) + '</label><label class="fld">กำหนดส่ง' + dateInp('t_due', t.due_date) + '</label><label class="fld">ความสำคัญ<select class="f" id="t_pr">' + Object.keys(PR).map(k => '<option value="' + k + '"' + ((t.priority || 'normal') === k ? ' selected' : '') + '>' + PR[k][0] + '</option>').join('') + '</select></label></div>' +
+    '<div class="row3"><label class="fld">วันเริ่ม' + dateInp('t_start', t.start_date) + '</label><div class="fld"><span class="duehd">กำหนดส่ง<label class="nodue"><input type="checkbox" id="t_nodue" onchange="TD.noDue(this.checked)"' + (t.id && !t.due_date ? ' checked' : '') + '> ไม่มีกำหนด</label></span>' + dateInp('t_due', t.due_date) + '</div><label class="fld">ความสำคัญ<select class="f" id="t_pr">' + Object.keys(PR).map(k => '<option value="' + k + '"' + ((t.priority || 'normal') === k ? ' selected' : '') + '>' + PR[k][0] + '</option>').join('') + '</select></label></div>' +
     '<label class="fld">รายละเอียด / สิ่งที่ต้องส่งมอบ<textarea class="f" id="t_detail">' + esc(t.detail || '') + '</textarea></label>';
 }
-function readTask() { return { title: val('t_title').trim(), cat_id: val('t_cat') || null, assignee: val('t_asg') || null, start_date: val('t_start') || null, due_date: val('t_due') || null, priority: val('t_pr') || 'normal', detail: val('t_detail').trim() }; }
-function newTask() {
+function noDue(on) { const x = $('t_due_txt'), h = $('t_due'); if (!x || !h) return; if (on) { x.value = ''; h.value = ''; x.classList.remove('bad'); } x.disabled = on; x.placeholder = on ? 'ไม่มีกำหนดส่ง' : 'วว/ดด/ปปปป (พ.ศ.)'; }
+function readTask() { return { title: val('t_title').trim(), cat_id: val('t_cat') || null, assignee: val('t_asg') || null, start_date: val('t_start') || null, due_date: ($('t_nodue') && $('t_nodue').checked) ? null : val('t_due') || null, priority: val('t_pr') || 'normal', detail: val('t_detail').trim() }; }
+function newTask(pre) {
   if (!S.dept && !isLeader()) return; S.dlg = { type: 'new' };
-  dlg(isLeader() || isHead() ? 'มอบหมายงาน' : 'เพิ่มงานของฉัน', isLeader() ? esc(isTop() ? 'มอบหมายให้ใครก็ได้ในสำนักงาน' : 'มอบหมายให้ใครก็ได้ในกอง') : esc((dept() || {}).name || ''), taskForm({ cat_id: S.f.cat || null, assignee: S.f.who && S.f.who !== 'none' ? S.f.who : null }), '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.saveNew()">บันทึกงาน</button>');
+  dlg(isLeader() || isHead() ? 'มอบหมายงาน' : 'เพิ่มงานของฉัน', isLeader() ? esc(isTop() ? 'มอบหมายให้ใครก็ได้ในสำนักงาน' : 'มอบหมายให้ใครก็ได้ในกอง') : esc((dept() || {}).name || ''), taskForm({ cat_id: pre ? null : S.f.cat || null, assignee: pre || (S.f.who && S.f.who !== 'none' ? S.f.who : null) }), '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.saveNew()">บันทึกงาน</button>');
   setTimeout(() => { const e = $('t_title'); if (e) e.focus(); }, 30);
 }
 async function saveNew() {
@@ -848,12 +852,12 @@ function openTask(id, refresh) {
     (fw && t.assignee === S.me.id ? '<div class="fwdbox"><span>งานนี้อยู่ที่คุณ · ส่งต่อให้' + (isTop() ? 'หัวหน้ากอง/หัวหน้าแผนก' : isDiv() ? 'หัวหน้าแผนก' : 'น้องในแผนก') + ' หรือดำเนินการเอง</span><button class="btn pri sm" onclick="TD.fwd(\'' + id + '\')">ส่งต่อ ↓</button></div>' : '') +
     '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' + stPill(t.status) + prPill(t.priority) + duePill(t) + '<span class="mu">' + esc(catPath(t) || 'ไม่ระบุงานหลัก') + '</span></div>' +
     '<div class="row2"><div><div class="mu">ผู้รับผิดชอบ</div>' + who(memberBy(t.assignee)) + '</div><div><div class="mu">มอบหมายโดย</div>' + who(by) + ' <span class="mu">' + fdt(t.created_at) + '</span></div></div>' +
-    (t.start_date || t.due_date ? '<div class="mu">' + (t.start_date ? 'เริ่ม ' + fd(t.start_date) : '') + (t.start_date && t.due_date ? ' · ' : '') + (t.due_date ? 'กำหนดส่ง ' + fd(t.due_date) : '') + (t.done_at ? ' · เสร็จ ' + fdt(t.done_at) : '') + '</div>' : '') +
+    ('<div class="mu">' + (t.start_date ? 'เริ่ม ' + fd(t.start_date) + ' · ' : '') + (t.due_date ? 'กำหนดส่ง ' + fd(t.due_date) : 'ไม่มีกำหนดส่ง') + (t.done_at ? ' · เสร็จ ' + fdt(t.done_at) : '') + '</div>') +
     (t.detail ? '<div style="white-space:pre-wrap;background:var(--surface-2);border-radius:12px;padding:11px 13px">' + esc(t.detail) + '</div>' : '') +
     (can ? '<div class="secttl">อัปเดตสถานะ</div><div class="stbtns">' + Object.keys(ST).map(k => '<button class="' + (t.status === k ? 'on ' : '') + ST[k][1] + '" onclick="TD.setStatus(\'' + id + '\',\'' + k + '\')">' + ST[k][0] + '</button>').join('') + '</div>' +
       '<div class="secttl">ความคืบหน้า <span id="pgv">' + t.progress + '%</span></div><input type="range" min="0" max="100" step="10" value="' + t.progress + '" id="t_prog" oninput="document.getElementById(\'pgv\').textContent=this.value+\'%\'" style="width:100%">' +
       '<div class="secttl">บันทึกติดตามงาน</div><textarea class="f" id="t_note" placeholder="รายงานความคืบหน้า ปัญหา หรือสิ่งที่ต้องการ…" style="min-height:64px"></textarea><div style="text-align:right"><button class="btn pri sm" onclick="TD.addNote(\'' + id + '\')">บันทึกความคืบหน้า</button></div>' : '<div class="mu">' + (isExt(t.dept_id) ? '🔗 งานจาก HR Desk · ดูได้อย่างเดียว อัปเดตที่ HR Desk' : 'ดูได้อย่างเดียว (แก้ได้เฉพาะผู้รับผิดชอบ ผู้มอบหมาย และหัวหน้าแผนก)') + '</div>') +
-    '<div class="secttl">ประวัติ</div><ul class="feed">' + (ups.map(u => { const m = memberBy(u.member_id); return '<li>' + av(m) + '<div><div><b>' + esc(m ? m.nickname : 'ระบบ') + '</b> ' + (u.text ? esc(u.text) : '') + (u.status_to ? ' ' + stPill(u.status_to) : '') + (u.progress_to != null && !u.status_to ? ' <span class="mu">' + u.progress_to + '%</span>' : '') + '</div><div class="mu">' + fdt(u.created_at) + '</div></div></li>'; }).join('') || '<li class="mu">—</li>') + '</ul>';
+    '<div class="secttl">ประวัติ</div><ul class="feed">' + (ups.map(u => { const m = memberBy(u.member_id) || (u.text === 'สร้างงาน' ? by : null), first = u.text === 'สร้างงาน' && og, to = first ? ch[1] || memberBy(t.assignee) : null; return '<li>' + av(m) + '<div><div><b>' + esc(m ? m.nickname : 'ระบบ') + '</b>' + (first ? ' <span class="mu">(' + FROM_TH[og.role] + ')</span> มอบหมายงาน' + (to ? 'ให้ <b>' + esc(to.nickname) + '</b>' : '') + orgTag(t) : ' ' + (u.text ? esc(u.text) : '')) + (u.status_to ? ' ' + stPill(u.status_to) : '') + (u.progress_to != null && !u.status_to ? ' <span class="mu">' + u.progress_to + '%</span>' : '') + '</div><div class="mu">' + fdt(u.created_at) + '</div></div></li>'; }).join('') || '<li class="mu">—</li>') + '</ul>';
   dlg(esc(t.title), esc(unitName(t)), body, (!isExt(t.dept_id) && (mgrTask(t) || t.created_by === S.me.id) ? '<button class="btn danger" onclick="TD.delTask(\'' + id + '\')">ลบงาน</button>' : '') + '<span class="g"></span>' + (fw ? '<button class="btn" onclick="TD.fwd(\'' + id + '\')">ส่งต่อ / มอบหมายต่อ</button>' : '') + (can ? '<button class="btn" onclick="TD.editTask(\'' + id + '\')">แก้ไขรายละเอียด</button>' : '') + '<button class="btn pri" onclick="TD.close()">ปิด</button>');
 }
 function fwd(id) {
@@ -873,6 +877,18 @@ async function saveFwd(id) {
   if (t && t.dept_id && t.dept_id !== S.dept && !isLeader()) S.dept = t.dept_id;
   toast('ส่งต่อให้ ' + (m ? m.nickname : '') + ' แล้ว'); render(true);
   if (t) { S.dlg = { type: 'task', id }; openTask(id); } else closeDlg();
+}
+// งานของหัวหน้ากอง (กดจากบอร์ดทีม/ภาพรวม) · หัวหน้าสำนักงานมอบหมายงานให้ได้จากตรงนี้
+function divPerson(id) {
+  const m = memberBy(id); if (!m) return; S.dlg = { type: 'div', id };
+  const mine = sortTasks(S.d.tasks.filter(t => t.assignee === id && isOpen(t)));
+  const sent = sortTasks(S.d.tasks.filter(t => isOpen(t) && t.assignee !== id && S.d.updates.some(u => u.task_id === t.id && u.member_id === id && u.to_member)));
+  const row = t => '<tr class="clk" onclick="' + (t.dept_id ? 'TD.setDept(\'' + t.dept_id + '\');' : '') + 'TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b>' + orgTag(t) + '<div class="mu">' + esc(unitName(t)) + '</div></td><td>' + stageOf(t) + '</td><td>' + (duePill(t) || '<span class="mu">—</span>') + '</td></tr>';
+  const tbl = (l, e) => l.length ? '<div class="tw"><table class="t"><tbody>' + l.map(row).join('') + '</tbody></table></div>' : '<div class="mu" style="padding:4px 0">' + e + '</div>';
+  dlg(esc(m.nickname), 'หัวหน้า' + esc((divBy(m.division_id) || {}).name || 'กอง'),
+    '<div class="secttl">งานที่อยู่กับหัวหน้ากอง (' + mine.length + ')</div>' + tbl(mine, 'ไม่มีงานค้าง') +
+    '<div class="secttl">ส่งต่อลงแผนกแล้ว ยังไม่เสร็จ (' + sent.length + ')</div>' + tbl(sent, '—'),
+    '<span class="g"></span><button class="btn" onclick="TD.close()">ปิด</button>' + (isTop() ? '<button class="btn pri" onclick="TD.newTask(\'' + id + '\')">+ มอบหมายงานให้ ' + esc(m.nickname) + '</button>' : ''));
 }
 function editTask(id) {
   const t = S.d.tasks.find(x => x.id === id); S.dlg = { type: 'task', id, editing: true };
@@ -1153,10 +1169,10 @@ window.TD = {
   clearF: () => { S.f = { q: '', who: '', cat: '', st: S.f.st }; render(); },
   q: v => { S.f.q = v; const pos = $('fq').selectionStart; render(true); const e = $('fq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   stat: o => { Object.assign(S.stat, o); render(true); },
-  newTask, saveNew, asgChg, asgFind, fwd, fwdFind, saveFwd, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
+  noDue, newTask, saveNew, asgChg, asgFind, fwd, fwdFind, saveFwd, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
   newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => { pwDialog(S.me.id, true); [60, 400, 900].forEach(t => setTimeout(() => { ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e && e.hasAttribute('readonly')) e.value = ''; }); }, t)); }, pwShow: () => ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e) e.type = e.type === 'password' ? 'text' : 'password'; }), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
-  person: id => { const m = memberBy(id); if (!m || !m.dept_id) return; S.dept = m.dept_id; S.f = { q: '', who: id, cat: '', st: 'open' }; S.view = 'list'; render(); window.scrollTo(0, 0); },
+  person: id => { const m = memberBy(id); if (m && m.role === 'division') return divPerson(id); if (!m || !m.dept_id) return; S.dept = m.dept_id; S.f = { q: '', who: id, cat: '', st: 'open' }; S.view = 'list'; render(); window.scrollTo(0, 0); },
   theme: () => setTheme(theme() === 'dark' ? 'light' : 'dark'), install: installApp, side: on => { const e = $('side'); if (e) e.classList.toggle('open', on); },
   extLink, extUnlink, newDivision, renameDiv, moveDept, newLeader, saveLeader, bulk, bulkTemplate, bulkFile, bulkSave, sumCsv: () => download('บัญชีผู้ใช้_TeamDesk.csv', csv(S.sumRows || [])),
   ndAddWork: () => { grabDept(); S.dlg.works.push({ name: '', subs: ['', '', ''] }); drawDept(); }, ndAddSub: i => { grabDept(); S.dlg.works[i].subs.push(''); drawDept(); }, ndAddMember: () => { grabDept(); S.dlg.team.push({}); drawDept(); },
