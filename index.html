@@ -486,7 +486,7 @@ function render(keepScroll) {
 }
 function topActs() {
   if (S.view === 'structure') return '<button class="btn" onclick="TD.bulk()">⇪ นำเข้าสมาชิก (CSV)</button><button class="btn" onclick="TD.newDivision()">+ กอง</button><button class="btn pri" onclick="TD.newDept()">+ แผนก</button>';
-  if (S.view === 'org' || S.view === 'teamall') return '<button class="btn" onclick="window.print()">พิมพ์</button>';
+  if (S.view === 'org' || S.view === 'teamall') return '<button class="btn" onclick="window.print()">พิมพ์</button>' + (isLeader() ? '<button class="btn pri" onclick="TD.newTask()">+ มอบหมายงาน</button>' : '');
   if (S.dept && isExt() && ['team', 'list', 'dash', 'board', 'mine'].includes(S.view)) return S.view === 'list' ? '<button class="btn" onclick="TD.expTasks()">↓ ส่งออก CSV</button>' : '';
   if (S.view === 'team') return '<button class="btn pri" onclick="TD.newMember()">+ เพิ่มสมาชิก</button>';
   if (S.view === 'stats') return '<button class="btn" onclick="TD.expStats()">↓ ส่งออก CSV</button><button class="btn" onclick="window.print()">พิมพ์</button>';
@@ -755,26 +755,50 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && DP.id) { e
 const showErr = m => { const e = $('derr'); if (e) { e.textContent = m; e.style.display = ''; } else toast(m, true); };
 
 /* ----- งาน ----- */
-function catOptions(sel) { return '<option value="">— ไม่ระบุ —</option>' + mains().map(c => '<option value="' + c.id + '"' + (sel === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>' + subs(c.id).map(s => '<option value="' + s.id + '"' + (sel === s.id ? ' selected' : '') + '>&nbsp;&nbsp;› ' + esc(s.name) + '</option>').join('')).join(''); }
+function catOptions(sel, did) { const ms = did ? S.d.cats.filter(c => c.dept_id === did && !c.parent_id).sort((a, b) => a.sort - b.sort) : mains(); return '<option value="">— ไม่ระบุ —</option>' + ms.map(c => '<option value="' + c.id + '"' + (sel === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>' + subs(c.id).map(s => '<option value="' + s.id + '"' + (sel === s.id ? ' selected' : '') + '>&nbsp;&nbsp;› ' + esc(s.name) + '</option>').join('')).join(''); }
+// หัวหน้าสำนักงาน/หัวหน้ากอง: เลือกผู้รับผิดชอบได้ทุกคนในความดูแล (ข้ามแผนก) · งานไปอยู่แผนกของผู้รับ
+const asgPool = () => { const ids = new Set(scopeDepts().filter(d => !d.ext_source).map(d => d.id)); return S.d.members.filter(m => m.active && !m.ext_id && (m.role === 'head' || m.role === 'staff') && ids.has(m.dept_id)); };
+function asgOptions(sel, q) {
+  q = String(q || '').toLowerCase().replace(/\s+/g, ''); const pool = asgPool(), out = [];
+  orderedDepts(scopeDepts().filter(d => !d.ext_source)).forEach(d => {
+    const ms = pool.filter(m => m.dept_id === d.id && (m.id === sel || !q || (m.nickname + m.full_name + m.position + d.name).toLowerCase().replace(/\s+/g, '').includes(q)))
+      .sort((a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1) || (a.sort || 0) - (b.sort || 0) || a.nickname.localeCompare(b.nickname, 'th'));
+    if (!ms.length) return; const v = divBy(d.division_id);
+    out.push('<optgroup label="' + esc((v ? v.name.replace(/มูลนิธิ$/, '') + ' › ' : '') + d.name) + '">' + ms.map(m => '<option value="' + m.id + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.nickname) + (m.role === 'head' ? ' (หัวหน้าแผนก)' : m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</optgroup>');
+  });
+  return '<option value="">— ยังไม่มอบหมาย —</option>' + (out.join('') || (q ? '<option value="" disabled>ไม่พบชื่อที่ค้นหา</option>' : ''));
+}
+const formDept = () => { const m = memberBy(val('t_asg')); return m && m.dept_id ? m.dept_id : (S.dlg && S.dlg.base) || null; };
+function asgChg() { const did = formDept(), c = $('t_cat'), cur = c ? c.value : ''; if (!c) return; const keep = cur && (catBy(cur) || {}).dept_id === did ? cur : ''; c.innerHTML = catOptions(keep, did || '__none__'); const n = $('t_dname'); if (n) n.textContent = did ? 'งานจะอยู่ใน ' + ((deptBy(did) || {}).name || '') : 'ยังไม่มอบหมาย · งานจะอยู่ในแผนกที่เปิดอยู่'; }
+function asgFind(q) { const e = $('t_asg'); if (!e) return; const cur = e.value; e.innerHTML = asgOptions(cur, q); if (!q) e.value = cur; const first = q && e.querySelector('option[value]:not([value=""])'); if (first && !cur) { e.value = first.value; } asgChg(); }
 function taskForm(t) {
-  const asg = isHead() ? members() : [S.me];
+  const pick = isLeader(), asg = isHead() ? members() : [S.me];
+  if (pick) S.dlg.base = t.dept_id || (S.dept && !isExt(S.dept) && scopeDepts().some(d => d.id === S.dept) ? S.dept : null);
+  const did = pick ? ((memberBy(t.assignee) || {}).dept_id || S.dlg.base) : (t.dept_id || S.dept);
+  const asgFld = pick
+    ? '<label class="fld">ผู้รับผิดชอบ <span class="mu">(ทุกคนใน' + (isTop() ? 'สำนักงาน' : 'กอง') + ')</span><input class="f" id="t_asgq" placeholder="🔍 พิมพ์ค้นชื่อ ตำแหน่ง หรือแผนก" oninput="TD.asgFind(this.value)" autocomplete="off" style="margin-bottom:6px"><select class="f" id="t_asg" onchange="TD.asgChg()">' + asgOptions(t.assignee || '') + '</select><span class="mu" id="t_dname" style="font-size:12px"></span></label>'
+    : '<label class="fld">ผู้รับผิดชอบ<select class="f" id="t_asg">' + (isHead() ? '<option value="">— ยังไม่มอบหมาย —</option>' : '') + asg.map(m => '<option value="' + m.id + '"' + ((t.assignee || (isHead() ? '' : S.me.id)) === m.id ? ' selected' : '') + '>' + esc(m.nickname) + (m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</select></label>';
+  const catFld = '<label class="fld">งานหลัก / งานย่อย<select class="f" id="t_cat">' + catOptions(t.cat_id, pick ? (did || '__none__') : null) + '</select></label>';
+  if (pick) setTimeout(asgChg, 0);
   return '<div id="derr" class="err" style="display:none"></div><label class="fld">ชื่องาน<input class="f" id="t_title" value="' + esc(t.title || '') + '" placeholder="เช่น จัดทำรายงานประจำเดือน"></label>' +
-    '<div class="row2"><label class="fld">งานหลัก / งานย่อย<select class="f" id="t_cat">' + catOptions(t.cat_id) + '</select></label><label class="fld">ผู้รับผิดชอบ<select class="f" id="t_asg">' + (isHead() ? '<option value="">— ยังไม่มอบหมาย —</option>' : '') + asg.map(m => '<option value="' + m.id + '"' + ((t.assignee || (isHead() ? '' : S.me.id)) === m.id ? ' selected' : '') + '>' + esc(m.nickname) + (m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</select></label></div>' +
+    (pick ? asgFld + catFld : '<div class="row2">' + catFld + asgFld + '</div>') +
     '<div class="row3"><label class="fld">วันเริ่ม' + dateInp('t_start', t.start_date) + '</label><label class="fld">กำหนดส่ง' + dateInp('t_due', t.due_date) + '</label><label class="fld">ความสำคัญ<select class="f" id="t_pr">' + Object.keys(PR).map(k => '<option value="' + k + '"' + ((t.priority || 'normal') === k ? ' selected' : '') + '>' + PR[k][0] + '</option>').join('') + '</select></label></div>' +
     '<label class="fld">รายละเอียด / สิ่งที่ต้องส่งมอบ<textarea class="f" id="t_detail">' + esc(t.detail || '') + '</textarea></label>';
 }
 function readTask() { return { title: val('t_title').trim(), cat_id: val('t_cat') || null, assignee: val('t_asg') || null, start_date: val('t_start') || null, due_date: val('t_due') || null, priority: val('t_pr') || 'normal', detail: val('t_detail').trim() }; }
 function newTask() {
-  if (!S.dept) return; S.dlg = { type: 'new' };
-  dlg(isHead() ? 'มอบหมายงาน' : 'เพิ่มงานของฉัน', esc((dept() || {}).name || ''), taskForm({ cat_id: S.f.cat || null, assignee: S.f.who && S.f.who !== 'none' ? S.f.who : null }), '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.saveNew()">บันทึกงาน</button>');
+  if (!S.dept && !isLeader()) return; S.dlg = { type: 'new' };
+  dlg(isLeader() || isHead() ? 'มอบหมายงาน' : 'เพิ่มงานของฉัน', isLeader() ? esc(isTop() ? 'มอบหมายให้ใครก็ได้ในสำนักงาน' : 'มอบหมายให้ใครก็ได้ในกอง') : esc((dept() || {}).name || ''), taskForm({ cat_id: S.f.cat || null, assignee: S.f.who && S.f.who !== 'none' ? S.f.who : null }), '<button class="btn" onclick="TD.close()">ยกเลิก</button><button class="btn pri" onclick="TD.saveNew()">บันทึกงาน</button>');
   setTimeout(() => { const e = $('t_title'); if (e) e.focus(); }, 30);
 }
 async function saveNew() {
   const r = readTask(); if (!r.title) return showErr('กรุณาใส่ชื่องาน');
   if (r.start_date && r.due_date && r.due_date < r.start_date) return showErr('กำหนดส่งต้องไม่ก่อนวันเริ่ม');
-  const { error } = await sb.from('td_tasks').insert(Object.assign(r, { dept_id: S.dept, created_by: S.me.id, status: 'todo' }));
+  const did = isLeader() ? formDept() : S.dept;
+  if (!did) return showErr('กรุณาเลือกผู้รับผิดชอบ');
+  const { error } = await sb.from('td_tasks').insert(Object.assign(r, { dept_id: did, created_by: S.me.id, status: 'todo' }));
   if (error) return showErr(error.message);
-  closeDlg(); toast('บันทึกงานแล้ว'); await Promise.all([load('tasks'), load('updates')]); render(true);
+  closeDlg(); toast(did !== S.dept ? 'มอบหมายแล้ว · ' + ((deptBy(did) || {}).name || '') : 'บันทึกงานแล้ว'); await Promise.all([load('tasks'), load('updates')]); render(true);
 }
 function openTask(id, refresh) {
   const t = S.d.tasks.find(x => x.id === id); if (!t) { if (refresh) closeDlg(); return; }
@@ -798,7 +822,9 @@ function editTask(id) {
 async function saveEdit(id) {
   const r = readTask(); if (!r.title) return showErr('กรุณาใส่ชื่องาน');
   if (r.start_date && r.due_date && r.due_date < r.start_date) return showErr('กำหนดส่งต้องไม่ก่อนวันเริ่ม');
+  if (isLeader()) { const did = formDept(); if (!did) return showErr('กรุณาเลือกผู้รับผิดชอบ'); r.dept_id = did; }
   const { error } = await sb.from('td_tasks').update(r).eq('id', id); if (error) return showErr(error.message);
+  if (r.dept_id && r.dept_id !== S.dept) S.dept = r.dept_id;
   await load('tasks'); S.dlg.editing = false; openTask(id); render(true); toast('บันทึกแล้ว');
 }
 async function setStatus(id, st) {
@@ -1068,7 +1094,7 @@ window.TD = {
   clearF: () => { S.f = { q: '', who: '', cat: '', st: S.f.st }; render(); },
   q: v => { S.f.q = v; const pos = $('fq').selectionStart; render(true); const e = $('fq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   stat: o => { Object.assign(S.stat, o); render(true); },
-  newTask, saveNew, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
+  newTask, saveNew, asgChg, asgFind, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
   newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => { pwDialog(S.me.id, true); [60, 400, 900].forEach(t => setTimeout(() => { ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e && e.hasAttribute('readonly')) e.value = ''; }); }, t)); }, pwShow: () => ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e) e.type = e.type === 'password' ? 'text' : 'password'; }), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
   person: id => { const m = memberBy(id); if (!m || !m.dept_id) return; S.dept = m.dept_id; S.f = { q: '', who: id, cat: '', st: 'open' }; S.view = 'list'; render(); window.scrollTo(0, 0); },
