@@ -142,6 +142,10 @@ textarea.f{height:auto;min-height:84px;padding:10px 12px;resize:vertical;width:1
 .extb{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:center;background:var(--ext-t);border:1px solid var(--ext-line);color:var(--ext-ink);border-radius:14px;padding:11px 16px;margin-bottom:18px;font-size:14px}.extb span{font-size:12.5px;opacity:.8}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap}
 .pill.ext{background:var(--ext-t);color:var(--ext-ink)}
+.pill.otag{background:var(--grad-soft,var(--pri-t));color:var(--pri-ink,var(--pri));font-weight:600}
+.obar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;background:var(--pri-t);border:1px solid var(--pri);color:var(--pri-ink,var(--ink));border-radius:12px;padding:10px 14px;font-size:14px}.obar b{font-weight:700}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}.chain .ar{color:var(--muted)}
+.fwdbox{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;background:var(--surface-2);border:1px dashed var(--pri);border-radius:12px;padding:10px 14px}
 .st-todo{background:var(--todo-t);color:var(--todo)}.st-doing{background:var(--doing-t);color:var(--doing)}.st-review{background:var(--review-t);color:var(--review)}.st-done{background:var(--done-t);color:var(--done)}.st-cancel{background:var(--cancel-t);color:var(--cancel)}
 .pr-urgent{background:var(--bad-t);color:var(--bad)}.pr-high{background:var(--warn-t);color:var(--warn)}.pr-low{background:var(--line2);color:var(--muted)}
 .due-bad{background:var(--bad-t);color:var(--bad)}.due-soon{background:var(--warn-t);color:var(--warn)}.due-ok{background:var(--line2);color:var(--muted)}
@@ -370,7 +374,44 @@ const stPill = s => '<span class="pill ' + ST[s][1] + '">' + ST[s][0] + '</span>
 const prPill = p => p !== 'normal' ? '<span class="pill ' + PR[p][1] + '">' + PR[p][0] + '</span>' : '';
 const duePill = t => { if (!t.due_date) return ''; if (!isOpen(t)) return '<span class="pill due-ok">ส่ง ' + fd(t.due_date) + '</span>'; const n = days(t.due_date); return '<span class="pill ' + (n < 0 ? 'due-bad' : n <= 3 ? 'due-soon' : 'due-ok') + '">' + (n < 0 ? 'เกิน ' + (-n) + ' วัน' : n === 0 ? 'ครบวันนี้' : 'ส่ง ' + fd(t.due_date)) + '</span>'; };
 const progBar = p => '<div class="bar"><i style="width:' + (p || 0) + '%"></i></div>';
-const canEditTask = t => !isExt(t.dept_id) && (isHead() || t.assignee === S.me.id || t.created_by === S.me.id);
+// งานระดับกอง (dept_id ว่าง) = หัวหน้าสำนักงานมอบให้หัวหน้ากอง รอส่งต่อลงแผนก
+const mgrTask = t => t.dept_id ? headOf(t.dept_id) : (isTop() || (isDiv() && t.division_id === S.me.division_id));
+const canEditTask = t => !isExt(t.dept_id) && (mgrTask(t) || t.assignee === S.me.id || t.created_by === S.me.id);
+const canFwd = t => isOpen(t) && S.me.role !== 'staff' && !isExt(t.dept_id) && (t.assignee === S.me.id || mgrTask(t)) && fwdTargets(t).length > 0;
+const FROM_TH = { office: 'หัวหน้าสำนักงาน', division: 'หัวหน้ากอง' };
+const originOf = t => { const o = memberBy(t.origin_by); return o && FROM_TH[o.role] ? o : null; };
+const orgTag = t => { const o = originOf(t); return o ? ' <span class="pill otag">📌 จาก' + FROM_TH[o.role] + '</span>' : ''; };
+const unitName = t => t.dept_id ? (deptBy(t.dept_id) || {}).name || '' : ((divBy(t.division_id) || {}).name || 'กอง') + ' · รอส่งต่อลงแผนก';
+// สายการมอบหมาย: ผู้สั่ง → (ผู้ส่งต่อ → ผู้รับ)… → ผู้รับผิดชอบปัจจุบัน
+function chainOf(t) {
+  const ids = [t.created_by];
+  S.d.updates.filter(u => u.task_id === t.id && u.to_member).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).forEach(u => { if (u.member_id) ids.push(u.member_id); ids.push(u.to_member); });
+  if (t.assignee) ids.push(t.assignee);
+  return ids.filter((x, i) => x && x !== ids[i - 1]).map(memberBy).filter(Boolean);
+}
+const chainHtml = t => '<span class="chain">' + chainOf(t).map(m => '<span class="who">' + av(m, 20) + esc(m.nickname) + '</span>').join('<span class="ar">→</span>') + '</span>';
+const stageOf = t => { const m = memberBy(t.assignee); if (!isOpen(t)) return stPill(t.status); if (!m) return '<span class="pill due-soon">รอมอบหมาย</span>';
+  if (m.role === 'division') return '<span class="pill due-soon">รอหัวหน้ากองส่งต่อ</span>';
+  if (m.role === 'head') return '<span class="pill ' + (t.status === 'todo' ? 'due-soon">รอหัวหน้าแผนกส่งต่อ/เริ่มงาน' : 'st-doing">หัวหน้าแผนกดำเนินการ') + '</span>';
+  return '<span class="pill st-doing">เจ้าหน้าที่ดำเนินการ</span>'; };
+// ส่งต่อได้ถึงใคร (ลงสายบังคับบัญชา)
+function fwdTargets(t) {
+  const act = S.d.members.filter(m => m.active && !m.ext_id && m.id !== S.me.id && m.id !== t.assignee), okD = id => { const d = deptBy(id); return !!d && !d.ext_source; };
+  if (isTop()) return act.filter(m => m.role === 'division' || ((m.role === 'head' || m.role === 'staff') && okD(m.dept_id)));
+  if (isDiv()) return act.filter(m => (m.role === 'head' || m.role === 'staff') && okD(m.dept_id) && deptBy(m.dept_id).division_id === S.me.division_id);
+  if (S.me.role === 'head') return act.filter(m => m.role === 'staff' && m.dept_id === S.me.dept_id);
+  return [];
+}
+function groupedOpts(list, sel, q) {
+  q = String(q || '').toLowerCase().replace(/\s+/g, ''); const hit = m => !q || m.id === sel || (m.nickname + m.full_name + m.position + ((deptBy(m.dept_id) || divBy(m.division_id) || {}).name || '')).toLowerCase().replace(/\s+/g, '').includes(q);
+  const opt = m => '<option value="' + m.id + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.nickname) + (m.role === 'division' ? ' (หัวหน้า' + esc(((divBy(m.division_id) || {}).name || 'กอง').replace(/มูลนิธิ$/, '')) + ')' : m.role === 'head' ? ' (หัวหน้าแผนก)' : m.position ? ' · ' + esc(m.position) : '') + '</option>';
+  const ord = (a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1) || (a.sort || 0) - (b.sort || 0) || a.nickname.localeCompare(b.nickname, 'th');
+  const out = [], dh = list.filter(m => m.role === 'division' && hit(m)).sort((a, b) => ((divBy(a.division_id) || {}).sort || 0) - ((divBy(b.division_id) || {}).sort || 0));
+  if (dh.length) out.push('<optgroup label="หัวหน้ากอง (ให้หัวหน้ากองส่งต่อลงแผนก)">' + dh.map(opt).join('') + '</optgroup>');
+  orderedDepts(S.d.depts).forEach(d => { const ms = list.filter(m => m.dept_id === d.id && m.role !== 'division' && hit(m)).sort(ord); if (!ms.length) return; const v = divBy(d.division_id);
+    out.push('<optgroup label="' + esc((v ? v.name.replace(/มูลนิธิ$/, '') + ' › ' : '') + d.name) + '">' + ms.map(opt).join('') + '</optgroup>'); });
+  return out.join('') || (q ? '<option value="" disabled>ไม่พบชื่อที่ค้นหา</option>' : '');
+}
 
 /* ===================== ล็อกอิน ===================== */
 async function gate(mode, err) {
@@ -462,7 +503,7 @@ function render(keepScroll) {
   try { localStorage.setItem('td_dept', S.dept || ''); } catch (e) {}
   if (!S.dept && S.view !== 'org' && S.view !== 'structure') S.view = isAdmin() ? 'structure' : 'org';
   if (((S.view === 'org' || S.view === 'teamall') && !isLeader()) || (S.view === 'structure' && !isAdmin())) S.view = 'dash';
-  const y = window.scrollY, mineOpen = tasks().filter(t => t.assignee === S.me.id && isOpen(t)).length, over = tasks().filter(isOver).length;
+  const y = window.scrollY, mineOpen = (isLeader() ? S.d.tasks : tasks()).filter(t => t.assignee === S.me.id && isOpen(t)).length, over = tasks().filter(isOver).length;
   const nb = (k, label, cnt, bad) => '<button class="' + (S.view === k ? 'on' : '') + '" onclick="TD.go(\'' + k + '\')">' + ico(k) + '<span>' + label + '</span>' + (cnt ? '<span class="cnt' + (bad ? ' bad' : '') + '">' + cnt + '</span>' : '') + '</button>';
   const d = dept(), th = theme();
   const subTxt = S.view === 'structure' ? VIEWS.structure[1] : (S.view === 'org' || S.view === 'teamall') ? orgTitle() : (d ? d.name + ' · ' : '') + VIEWS[S.view][1];
@@ -510,7 +551,7 @@ V.dash = () => {
   const perC = mains().map(c => { const ct = all.filter(t => { const mc = mainOf(t); return mc && mc.id === c.id; }); const ok = ct.filter(t => t.status === 'done').length, live = ct.filter(t => t.status !== 'cancel').length; return { c, open: ct.filter(isOpen).length, ok, live }; });
   const unassigned = open.filter(t => !t.assignee).length;
   const recent = S.d.updates.filter(u => u.dept_id === S.dept).slice(-12).reverse();
-  const tRow = t => '<tr class="clk" onclick="TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b><div class="mu">' + esc(catPath(t)) + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + duePill(t) + '</td><td>' + stPill(t.status) + '</td></tr>';
+  const tRow = t => '<tr class="clk" onclick="TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b>' + orgTag(t) + '<div class="mu">' + esc(catPath(t)) + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + duePill(t) + '</td><td>' + stPill(t.status) + '</td></tr>';
   return '<div class="stack"><div class="tiles">' +
     tile('งานที่ยังไม่เสร็จ', open.length, 'กำลังทำ ' + open.filter(t => t.status === 'doing').length + ' · รอตรวจ ' + open.filter(t => t.status === 'review').length, 'var(--doing)', "TD.go('board')") +
     tile('เกินกำหนด', over.length, 'งานที่เลยวันส่งแล้วยังไม่เสร็จ', 'var(--bad)', "TD.filt({st:'over'})") +
@@ -556,16 +597,16 @@ V.board = () => {
     return '<div class="col"><h3>' + stPill(s) + '<span class="mu">' + ts.length + '</span></h3>' + (ts.map(card).join('') || '<div class="mu" style="padding:8px">—</div>') + '</div>'; };
   return filterBar(false) + '<div class="board">' + ['todo', 'doing', 'review', 'done'].map(col).join('') + '</div><div class="mu" style="margin-top:10px">คอลัมน์ "เสร็จแล้ว" แสดงเฉพาะ 30 วันล่าสุด · งานทั้งหมดดูได้ที่หน้า "งานทั้งหมด"</div>';
 };
-const card = t => '<div class="tcard" onclick="TD.openTask(\'' + t.id + '\')"><div class="tt">' + esc(t.title) + '</div><div class="mu">' + esc(catPath(t)) + '</div><div class="meta">' + who(memberBy(t.assignee)) + duePill(t) + prPill(t.priority) + '</div>' + (t.status === 'doing' || t.progress ? '<div style="margin-top:8px">' + progBar(t.progress) + '</div>' : '') + '</div>';
+const card = t => '<div class="tcard" onclick="TD.openTask(\'' + t.id + '\')"><div class="tt">' + esc(t.title) + '</div><div class="mu">' + esc(catPath(t)) + '</div><div class="meta">' + who(memberBy(t.assignee)) + duePill(t) + prPill(t.priority) + orgTag(t) + '</div>' + (t.status === 'doing' || t.progress ? '<div style="margin-top:8px">' + progBar(t.progress) + '</div>' : '') + '</div>';
 
 /* ===================== งานทั้งหมด / งานของฉัน ===================== */
-const taskTable = list => list.length ? '<div class="card tw"><table class="t"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>กำหนดส่ง</th><th>ความคืบหน้า</th><th>สถานะ</th></tr></thead><tbody>' + list.map(t => '<tr class="clk" onclick="TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b> ' + prPill(t.priority) + '<div class="mu">' + esc(catPath(t) || 'ไม่ระบุงานหลัก') + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + (duePill(t) || '<span class="mu">—</span>') + '</td><td style="min-width:110px">' + progBar(t.progress) + '<div class="mu">' + t.progress + '%</div></td><td>' + stPill(t.status) + (t.done_at ? '<div class="mu">' + fd(iso(new Date(t.done_at))) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="card empty">ไม่พบงาน</div>';
+const taskTable = list => list.length ? '<div class="card tw"><table class="t"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>กำหนดส่ง</th><th>ความคืบหน้า</th><th>สถานะ</th></tr></thead><tbody>' + list.map(t => '<tr class="clk" onclick="TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b> ' + prPill(t.priority) + orgTag(t) + '<div class="mu">' + esc(t.dept_id !== S.dept ? unitName(t) : catPath(t) || 'ไม่ระบุงานหลัก') + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + (duePill(t) || '<span class="mu">—</span>') + '</td><td style="min-width:110px">' + progBar(t.progress) + '<div class="mu">' + t.progress + '%</div></td><td>' + stPill(t.status) + (t.done_at ? '<div class="mu">' + fd(iso(new Date(t.done_at))) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="card empty">ไม่พบงาน</div>';
 const sortTasks = l => l.sort((a, b) => (isOpen(b) - isOpen(a)) || (a.due_date || '9999').localeCompare(b.due_date || '9999') || String(b.created_at).localeCompare(String(a.created_at)));
 V.list = () => { const l = sortTasks(filtered()); return filterBar(true) + '<div class="mu" style="margin-bottom:8px">' + l.length + ' งาน</div>' + taskTable(l); };
 V.mine = () => {
-  const mine = tasks().filter(t => t.assignee === S.me.id), open = sortTasks(mine.filter(isOpen)), done = mine.filter(t => t.status === 'done').sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))).slice(0, 20);
-  const given = isHead() ? sortTasks((isLeader() ? S.d.tasks : tasks()).filter(t => t.created_by === S.me.id && t.assignee !== S.me.id && isOpen(t))) : [];
-  return '<div class="stack"><section><div class="secttl" style="margin-bottom:8px">งานที่ต้องทำ (' + open.length + ')</div>' + taskTable(open) + '</section>' + (isHead() ? '<section><div class="secttl" style="margin-bottom:8px">งานที่ฉันมอบหมาย ยังไม่เสร็จ (' + given.length + ')</div>' + taskTable(given) + '</section>' : '') + '<section><div class="secttl" style="margin-bottom:8px">เสร็จล่าสุด</div>' + taskTable(done) + '</section></div>';
+  const mine = (isLeader() ? S.d.tasks : tasks()).filter(t => t.assignee === S.me.id), open = sortTasks(mine.filter(isOpen)), done = mine.filter(t => t.status === 'done').sort((a, b) => String(b.done_at).localeCompare(String(a.done_at))).slice(0, 20);
+  const given = isHead() || isLeader() ? sortTasks((isLeader() ? S.d.tasks : tasks()).filter(t => t.created_by === S.me.id && t.assignee !== S.me.id && isOpen(t))) : [];
+  return '<div class="stack"><section><div class="secttl" style="margin-bottom:8px">งานที่ต้องทำ (' + open.length + ')</div>' + taskTable(open) + '</section>' + (isHead() || isLeader() ? '<section><div class="secttl" style="margin-bottom:8px">งานที่ฉันมอบหมาย ยังไม่เสร็จ (' + given.length + ')</div>' + taskTable(given) + '</section>' : '') + '<section><div class="secttl" style="margin-bottom:8px">เสร็จล่าสุด</div>' + taskTable(done) + '</section></div>';
 };
 
 /* ===================== สถิติ ===================== */
@@ -638,6 +679,9 @@ V.org = () => {
   return '<div class="stack"><div class="tiles">' + (isTop() ? tile('กอง', S.d.divisions.length, 'หัวหน้ากอง ' + leaders('division').length + ' คน', 'var(--pri)') : '') + tile('แผนก', sc.length, 'สมาชิก ' + tot.members + ' คน', 'var(--todo)') + tile('งานค้าง', tot.open, 'ทุกแผนกในความดูแล', 'var(--doing)') + tile('เกินกำหนด', tot.over, 'ต้องติดตาม', 'var(--bad)') + tile('เสร็จเดือนนี้', tot.doneM, TMF[new Date().getMonth()] + ' ' + (new Date().getFullYear() + 543), 'var(--done)') + '</div>' +
     groups.map(g => { const v = divBy(g.k), s2 = sumOf(g.rows), dh = S.d.members.filter(m => m.role === 'division' && m.active && m.division_id === g.k);
       return '<section class="card"><div class="card-h"><div><h2>' + esc(v ? v.name : 'ขึ้นตรงสำนักงาน') + '</h2><div class="mu">' + (v ? 'หัวหน้ากอง: ' + (dh.map(m => av(m, 20) + ' ' + esc(m.nickname)).join(', ') || '—') : 'หัวหน้าสำนักงาน: ' + (leaders('office').map(m => esc(m.nickname)).join(', ') || '—')) + '</div></div><span class="mu">' + g.rows.length + ' แผนก · ค้าง ' + s2.open + ' · เกินกำหนด ' + s2.over + ' · เสร็จเดือนนี้ ' + s2.doneM + '</span></div><div class="tw"><table class="t">' + head + '<tbody>' + g.rows.map(dRow).join('') + '</tbody></table></div></section>'; }).join('') +
+    (() => { const ct = sortTasks(S.d.tasks.filter(t => originOf(t) && isOpen(t) && (t.dept_id ? sc.some(d => d.id === t.dept_id) : true)));
+      return '<section class="card"><div class="card-h"><div><h2>📌 งานตามสายบังคับบัญชา</h2><div class="mu">งานที่หัวหน้าสำนักงาน/หัวหน้ากองมอบหมาย · ติดตามว่าอยู่ชั้นไหนแล้ว</div></div><span class="mu">' + ct.length + ' งานค้าง</span></div><div class="tw">' +
+        (ct.length ? '<table class="t"><thead><tr><th>งาน</th><th>สายการมอบหมาย</th><th>ขั้นตอน</th><th>กำหนดส่ง</th></tr></thead><tbody>' + ct.map(t => '<tr class="clk" onclick="' + (t.dept_id ? 'TD.setDept(\'' + t.dept_id + '\');' : '') + 'TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b>' + orgTag(t) + '<div class="mu">' + esc(unitName(t)) + '</div></td><td>' + chainHtml(t) + '</td><td>' + stageOf(t) + '</td><td>' + (duePill(t) || '<span class="mu">—</span>') + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">ยังไม่มีงานค้าง · กด "+ มอบหมายงาน" เพื่อสั่งงาน</div>') + '</div></section>'; })() +
     '<section class="card"><div class="card-h"><h2>งานเกินกำหนด (ทุกแผนกในความดูแล)</h2></div><div class="tw">' + (over.length ? '<table class="t"><tbody>' + over.map(t => '<tr class="clk" onclick="TD.setDept(\'' + t.dept_id + '\');TD.openTask(\'' + t.id + '\')"><td><b>' + esc(t.title) + '</b><div class="mu">' + esc((deptBy(t.dept_id) || {}).name || '') + '</div></td><td>' + who(memberBy(t.assignee)) + '</td><td>' + duePill(t) + '</td><td>' + stPill(t.status) + '</td></tr>').join('') + '</tbody></table>' : '<div class="empty">ไม่มีงานเกินกำหนด 👍</div>') + '</div></section>' +
     '<div class="mu">คลิกแผนกเพื่อดูภาพรวม บอร์ดงาน และสถิติของแผนกนั้น · ' + (isTop() ? 'หัวหน้าสำนักงานมอบหมายงานได้ทุกแผนก' : 'หัวหน้ากองมอบหมายงานได้ทุกแผนกในกอง') + '</div></div>';
 };
@@ -757,23 +801,15 @@ const showErr = m => { const e = $('derr'); if (e) { e.textContent = m; e.style.
 /* ----- งาน ----- */
 function catOptions(sel, did) { const ms = did ? S.d.cats.filter(c => c.dept_id === did && !c.parent_id).sort((a, b) => a.sort - b.sort) : mains(); return '<option value="">— ไม่ระบุ —</option>' + ms.map(c => '<option value="' + c.id + '"' + (sel === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>' + subs(c.id).map(s => '<option value="' + s.id + '"' + (sel === s.id ? ' selected' : '') + '>&nbsp;&nbsp;› ' + esc(s.name) + '</option>').join('')).join(''); }
 // หัวหน้าสำนักงาน/หัวหน้ากอง: เลือกผู้รับผิดชอบได้ทุกคนในความดูแล (ข้ามแผนก) · งานไปอยู่แผนกของผู้รับ
-const asgPool = () => { const ids = new Set(scopeDepts().filter(d => !d.ext_source).map(d => d.id)); return S.d.members.filter(m => m.active && !m.ext_id && (m.role === 'head' || m.role === 'staff') && ids.has(m.dept_id)); };
-function asgOptions(sel, q) {
-  q = String(q || '').toLowerCase().replace(/\s+/g, ''); const pool = asgPool(), out = [];
-  orderedDepts(scopeDepts().filter(d => !d.ext_source)).forEach(d => {
-    const ms = pool.filter(m => m.dept_id === d.id && (m.id === sel || !q || (m.nickname + m.full_name + m.position + d.name).toLowerCase().replace(/\s+/g, '').includes(q)))
-      .sort((a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1) || (a.sort || 0) - (b.sort || 0) || a.nickname.localeCompare(b.nickname, 'th'));
-    if (!ms.length) return; const v = divBy(d.division_id);
-    out.push('<optgroup label="' + esc((v ? v.name.replace(/มูลนิธิ$/, '') + ' › ' : '') + d.name) + '">' + ms.map(m => '<option value="' + m.id + '"' + (m.id === sel ? ' selected' : '') + '>' + esc(m.nickname) + (m.role === 'head' ? ' (หัวหน้าแผนก)' : m.position ? ' · ' + esc(m.position) : '') + '</option>').join('') + '</optgroup>');
-  });
-  return '<option value="">— ยังไม่มอบหมาย —</option>' + (out.join('') || (q ? '<option value="" disabled>ไม่พบชื่อที่ค้นหา</option>' : ''));
-}
-const formDept = () => { const m = memberBy(val('t_asg')); return m && m.dept_id ? m.dept_id : (S.dlg && S.dlg.base) || null; };
-function asgChg() { const did = formDept(), c = $('t_cat'), cur = c ? c.value : ''; if (!c) return; const keep = cur && (catBy(cur) || {}).dept_id === did ? cur : ''; c.innerHTML = catOptions(keep, did || '__none__'); const n = $('t_dname'); if (n) n.textContent = did ? 'งานจะอยู่ใน ' + ((deptBy(did) || {}).name || '') : 'ยังไม่มอบหมาย · งานจะอยู่ในแผนกที่เปิดอยู่'; }
+const asgPool = () => { const ids = new Set(scopeDepts().filter(d => !d.ext_source).map(d => d.id)); return S.d.members.filter(m => m.active && !m.ext_id && m.id !== S.me.id && (((m.role === 'head' || m.role === 'staff') && ids.has(m.dept_id)) || (m.role === 'division' && isTop()))); };
+function asgOptions(sel, q) { const pool = asgPool(), cur = memberBy(sel); if (cur && !pool.includes(cur)) pool.push(cur); return '<option value="">— ยังไม่มอบหมาย —</option>' + groupedOpts(pool, sel, q); }
+const formTgt = () => { const m = memberBy(val('t_asg')); if (m && m.role === 'division') return { dept_id: null, division_id: m.division_id }; const d = m && m.dept_id ? m.dept_id : (S.dlg && S.dlg.base) || null; return d ? { dept_id: d, division_id: null } : null; };
+const formDept = () => (formTgt() || {}).dept_id || null;
+function asgChg() { const did = formDept(), c = $('t_cat'), cur = c ? c.value : ''; if (!c) return; const keep = cur && (catBy(cur) || {}).dept_id === did ? cur : ''; c.innerHTML = catOptions(keep, did || '__none__'); const n = $('t_dname'), tg = formTgt(); if (n) n.textContent = tg && !tg.dept_id ? 'งานระดับกอง · หัวหน้ากองจะส่งต่อให้หัวหน้าแผนก แล้วหัวหน้าแผนกส่งต่อให้น้อง' : did ? 'งานจะอยู่ใน ' + ((deptBy(did) || {}).name || '') + ((memberBy(val('t_asg')) || {}).role === 'head' ? ' · หัวหน้าแผนกส่งต่อให้น้องได้' : '') : 'ยังไม่มอบหมาย · งานจะอยู่ในแผนกที่เปิดอยู่'; }
 function asgFind(q) { const e = $('t_asg'); if (!e) return; const cur = e.value; e.innerHTML = asgOptions(cur, q); if (!q) e.value = cur; const first = q && e.querySelector('option[value]:not([value=""])'); if (first && !cur) { e.value = first.value; } asgChg(); }
 function taskForm(t) {
   const pick = isLeader(), asg = isHead() ? members() : [S.me];
-  if (pick) S.dlg.base = t.dept_id || (S.dept && !isExt(S.dept) && scopeDepts().some(d => d.id === S.dept) ? S.dept : null);
+  if (pick) S.dlg.base = (t.id && !t.dept_id ? null : t.dept_id) || (S.dept && !isExt(S.dept) && scopeDepts().some(d => d.id === S.dept) ? S.dept : null);
   const did = pick ? ((memberBy(t.assignee) || {}).dept_id || S.dlg.base) : (t.dept_id || S.dept);
   const asgFld = pick
     ? '<label class="fld">ผู้รับผิดชอบ <span class="mu">(ทุกคนใน' + (isTop() ? 'สำนักงาน' : 'กอง') + ')</span><input class="f" id="t_asgq" placeholder="🔍 พิมพ์ค้นชื่อ ตำแหน่ง หรือแผนก" oninput="TD.asgFind(this.value)" autocomplete="off" style="margin-bottom:6px"><select class="f" id="t_asg" onchange="TD.asgChg()">' + asgOptions(t.assignee || '') + '</select><span class="mu" id="t_dname" style="font-size:12px"></span></label>'
@@ -794,18 +830,23 @@ function newTask() {
 async function saveNew() {
   const r = readTask(); if (!r.title) return showErr('กรุณาใส่ชื่องาน');
   if (r.start_date && r.due_date && r.due_date < r.start_date) return showErr('กำหนดส่งต้องไม่ก่อนวันเริ่ม');
-  const did = isLeader() ? formDept() : S.dept;
-  if (!did) return showErr('กรุณาเลือกผู้รับผิดชอบ');
-  const { error } = await sb.from('td_tasks').insert(Object.assign(r, { dept_id: did, created_by: S.me.id, status: 'todo' }));
+  const tg = isLeader() ? formTgt() : { dept_id: S.dept };
+  if (!tg) return showErr('กรุณาเลือกผู้รับผิดชอบ');
+  const { error } = await sb.from('td_tasks').insert(Object.assign(r, tg, { created_by: S.me.id, status: 'todo' }));
   if (error) return showErr(error.message);
-  closeDlg(); toast(did !== S.dept ? 'มอบหมายแล้ว · ' + ((deptBy(did) || {}).name || '') : 'บันทึกงานแล้ว'); await Promise.all([load('tasks'), load('updates')]); render(true);
+  const am = memberBy(r.assignee);
+  closeDlg(); toast(am && am.role === 'division' ? 'มอบหมายให้' + am.nickname + 'แล้ว · รอหัวหน้ากองส่งต่อ' : tg.dept_id !== S.dept ? 'มอบหมายแล้ว · ' + ((deptBy(tg.dept_id) || {}).name || '') : 'บันทึกงานแล้ว'); await Promise.all([load('tasks'), load('updates')]); render(true);
 }
 function openTask(id, refresh) {
   const t = S.d.tasks.find(x => x.id === id); if (!t) { if (refresh) closeDlg(); return; }
   if (refresh && S.dlg && S.dlg.editing) return;
   S.dlg = { type: 'task', id }; const can = canEditTask(t), ups = S.d.updates.filter(u => u.task_id === id).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  const by = memberBy(t.created_by);
-  const body = '<div id="derr" class="err" style="display:none"></div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' + stPill(t.status) + prPill(t.priority) + duePill(t) + '<span class="mu">' + esc(catPath(t) || 'ไม่ระบุงานหลัก') + '</span></div>' +
+  const by = memberBy(t.created_by), og = originOf(t), ch = chainOf(t), fw = canFwd(t);
+  const body = '<div id="derr" class="err" style="display:none"></div>' +
+    (og ? '<div class="obar">📌 <span>งานนี้มอบหมายจาก<b>' + FROM_TH[og.role] + '</b> · ' + esc(og.nickname) + '</span></div>' : '') +
+    (og || ch.length > 2 ? '<div><div class="mu" style="margin-bottom:4px">สายการมอบหมาย</div>' + chainHtml(t) + '</div>' : '') +
+    (fw && t.assignee === S.me.id ? '<div class="fwdbox"><span>งานนี้อยู่ที่คุณ · ส่งต่อให้' + (isTop() ? 'หัวหน้ากอง/หัวหน้าแผนก' : isDiv() ? 'หัวหน้าแผนก' : 'น้องในแผนก') + ' หรือดำเนินการเอง</span><button class="btn pri sm" onclick="TD.fwd(\'' + id + '\')">ส่งต่อ ↓</button></div>' : '') +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' + stPill(t.status) + prPill(t.priority) + duePill(t) + '<span class="mu">' + esc(catPath(t) || 'ไม่ระบุงานหลัก') + '</span></div>' +
     '<div class="row2"><div><div class="mu">ผู้รับผิดชอบ</div>' + who(memberBy(t.assignee)) + '</div><div><div class="mu">มอบหมายโดย</div>' + who(by) + ' <span class="mu">' + fdt(t.created_at) + '</span></div></div>' +
     (t.start_date || t.due_date ? '<div class="mu">' + (t.start_date ? 'เริ่ม ' + fd(t.start_date) : '') + (t.start_date && t.due_date ? ' · ' : '') + (t.due_date ? 'กำหนดส่ง ' + fd(t.due_date) : '') + (t.done_at ? ' · เสร็จ ' + fdt(t.done_at) : '') + '</div>' : '') +
     (t.detail ? '<div style="white-space:pre-wrap;background:var(--surface-2);border-radius:12px;padding:11px 13px">' + esc(t.detail) + '</div>' : '') +
@@ -813,7 +854,25 @@ function openTask(id, refresh) {
       '<div class="secttl">ความคืบหน้า <span id="pgv">' + t.progress + '%</span></div><input type="range" min="0" max="100" step="10" value="' + t.progress + '" id="t_prog" oninput="document.getElementById(\'pgv\').textContent=this.value+\'%\'" style="width:100%">' +
       '<div class="secttl">บันทึกติดตามงาน</div><textarea class="f" id="t_note" placeholder="รายงานความคืบหน้า ปัญหา หรือสิ่งที่ต้องการ…" style="min-height:64px"></textarea><div style="text-align:right"><button class="btn pri sm" onclick="TD.addNote(\'' + id + '\')">บันทึกความคืบหน้า</button></div>' : '<div class="mu">' + (isExt(t.dept_id) ? '🔗 งานจาก HR Desk · ดูได้อย่างเดียว อัปเดตที่ HR Desk' : 'ดูได้อย่างเดียว (แก้ได้เฉพาะผู้รับผิดชอบ ผู้มอบหมาย และหัวหน้าแผนก)') + '</div>') +
     '<div class="secttl">ประวัติ</div><ul class="feed">' + (ups.map(u => { const m = memberBy(u.member_id); return '<li>' + av(m) + '<div><div><b>' + esc(m ? m.nickname : 'ระบบ') + '</b> ' + (u.text ? esc(u.text) : '') + (u.status_to ? ' ' + stPill(u.status_to) : '') + (u.progress_to != null && !u.status_to ? ' <span class="mu">' + u.progress_to + '%</span>' : '') + '</div><div class="mu">' + fdt(u.created_at) + '</div></div></li>'; }).join('') || '<li class="mu">—</li>') + '</ul>';
-  dlg(esc(t.title), esc((dept() || {}).name || ''), body, (!isExt(t.dept_id) && (isHead() || t.created_by === S.me.id) ? '<button class="btn danger" onclick="TD.delTask(\'' + id + '\')">ลบงาน</button>' : '') + '<span class="g"></span>' + (can ? '<button class="btn" onclick="TD.editTask(\'' + id + '\')">แก้ไขรายละเอียด</button>' : '') + '<button class="btn pri" onclick="TD.close()">ปิด</button>');
+  dlg(esc(t.title), esc(unitName(t)), body, (!isExt(t.dept_id) && (mgrTask(t) || t.created_by === S.me.id) ? '<button class="btn danger" onclick="TD.delTask(\'' + id + '\')">ลบงาน</button>' : '') + '<span class="g"></span>' + (fw ? '<button class="btn" onclick="TD.fwd(\'' + id + '\')">ส่งต่อ / มอบหมายต่อ</button>' : '') + (can ? '<button class="btn" onclick="TD.editTask(\'' + id + '\')">แก้ไขรายละเอียด</button>' : '') + '<button class="btn pri" onclick="TD.close()">ปิด</button>');
+}
+function fwd(id) {
+  const t = S.d.tasks.find(x => x.id === id); if (!t) return; S.dlg = { type: 'task', id, editing: true };
+  const list = fwdTargets(t), cur = memberBy(t.assignee);
+  dlg('ส่งต่องาน', esc(t.title), '<div id="derr" class="err" style="display:none"></div>' + (originOf(t) ? '<div class="obar">📌 <span>แถบ "มอบหมายจาก' + FROM_TH[originOf(t).role] + '" จะติดไปกับงานตลอด</span></div>' : '') +
+    '<div class="mu">ตอนนี้อยู่ที่ ' + who(cur) + '</div>' +
+    '<label class="fld">ส่งต่อให้<input class="f" id="f_q" placeholder="🔍 พิมพ์ค้นชื่อ" oninput="TD.fwdFind(\'' + id + '\',this.value)" autocomplete="off" style="margin-bottom:6px"><select class="f" id="f_to"><option value="">— เลือกผู้รับ —</option>' + groupedOpts(list, '') + '</select></label>' +
+    '<label class="fld">ข้อความถึงผู้รับ (ไม่บังคับ)<input class="f" id="f_note" placeholder="เช่น ขอภายในวันศุกร์"></label>',
+    '<button class="btn" onclick="TD.openTask(\'' + id + '\')">ยกเลิก</button><button class="btn pri" onclick="TD.saveFwd(\'' + id + '\')">ส่งต่อ</button>');
+}
+function fwdFind(id, q) { const t = S.d.tasks.find(x => x.id === id), e = $('f_to'); if (!t || !e) return; const v = e.value; e.innerHTML = '<option value="">— เลือกผู้รับ —</option>' + groupedOpts(fwdTargets(t), v, q); const f = q && !v && e.querySelector('option[value]:not([value=""]):not([disabled])'); e.value = f ? f.value : v; }
+async function saveFwd(id) {
+  const to = val('f_to'); if (!to) return showErr('กรุณาเลือกผู้รับ');
+  const { error } = await sb.rpc('td_forward', { p_task: id, p_to: to, p_note: val('f_note').trim() }); if (error) return showErr(error.message);
+  await Promise.all([load('tasks'), load('updates')]); const t = S.d.tasks.find(x => x.id === id), m = memberBy(to);
+  if (t && t.dept_id && t.dept_id !== S.dept && !isLeader()) S.dept = t.dept_id;
+  toast('ส่งต่อให้ ' + (m ? m.nickname : '') + ' แล้ว'); render(true);
+  if (t) { S.dlg = { type: 'task', id }; openTask(id); } else closeDlg();
 }
 function editTask(id) {
   const t = S.d.tasks.find(x => x.id === id); S.dlg = { type: 'task', id, editing: true };
@@ -822,7 +881,7 @@ function editTask(id) {
 async function saveEdit(id) {
   const r = readTask(); if (!r.title) return showErr('กรุณาใส่ชื่องาน');
   if (r.start_date && r.due_date && r.due_date < r.start_date) return showErr('กำหนดส่งต้องไม่ก่อนวันเริ่ม');
-  if (isLeader()) { const did = formDept(); if (!did) return showErr('กรุณาเลือกผู้รับผิดชอบ'); r.dept_id = did; }
+  if (isLeader()) { const tg = formTgt(); if (!tg) return showErr('กรุณาเลือกผู้รับผิดชอบ'); Object.assign(r, tg); }
   const { error } = await sb.from('td_tasks').update(r).eq('id', id); if (error) return showErr(error.message);
   if (r.dept_id && r.dept_id !== S.dept) S.dept = r.dept_id;
   await load('tasks'); S.dlg.editing = false; openTask(id); render(true); toast('บันทึกแล้ว');
@@ -1094,7 +1153,7 @@ window.TD = {
   clearF: () => { S.f = { q: '', who: '', cat: '', st: S.f.st }; render(); },
   q: v => { S.f.q = v; const pos = $('fq').selectionStart; render(true); const e = $('fq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   stat: o => { Object.assign(S.stat, o); render(true); },
-  newTask, saveNew, asgChg, asgFind, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
+  newTask, saveNew, asgChg, asgFind, fwd, fwdFind, saveFwd, openTask, editTask, saveEdit, setStatus, addNote, delTask, close: () => { const d = S.dlg; closeDlg(); if (d && d.type === 'task' && d.editing) openTask(d.id); },
   newMember, saveNewMember, editMember, saveMember, toggleActive, delMember, avatar, avatarDel, pwSelf: () => { pwDialog(S.me.id, true); [60, 400, 900].forEach(t => setTimeout(() => { ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e && e.hasAttribute('readonly')) e.value = ''; }); }, t)); }, pwShow: () => ['pw1', 'pw2'].forEach(k => { const e = $(k); if (e) e.type = e.type === 'password' ? 'text' : 'password'; }), pwOther: id => pwDialog(id, false), savePw,
   addCat, renameCat, delCat, saveDept, newDept, saveDeptNew,
   person: id => { const m = memberBy(id); if (!m || !m.dept_id) return; S.dept = m.dept_id; S.f = { q: '', who: id, cat: '', st: 'open' }; S.view = 'list'; render(); window.scrollTo(0, 0); },
