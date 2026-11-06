@@ -785,6 +785,7 @@ function dpDraw() {
 }
 function dpClose() { DP.id = null; const el = $('dpop'); if (el) el.remove(); }
 document.addEventListener('focusin', e => { const id = e.target.dataset && e.target.dataset.dp; if (id) dpOpen(id); });
+document.addEventListener('click', e => { const id = e.target.dataset && e.target.dataset.dp; if (id && DP.id !== id) dpOpen(id); });
 document.addEventListener('mousedown', e => { if (DP.id && !e.target.closest('#dpop') && !(e.target.dataset && e.target.dataset.dp)) dpClose(); });
 document.addEventListener('input', e => {
   const id = e.target.dataset && e.target.dataset.dp; if (!id) return;
