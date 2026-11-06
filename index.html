@@ -343,7 +343,7 @@ async function load(k) {
   for (;;) { const { data, error } = await sb.from(TABLES[k][0]).select('*').order(TABLES[k][1], { ascending: true }).order('id').range(from, from + 999); if (error) { toast('โหลดข้อมูลไม่สำเร็จ: ' + error.message, true); break; } all = all.concat(data || []); if (!data || data.length < 1000) break; from += 1000; }
   S.d[k] = all;
 }
-const loadAll = () => Promise.all(Object.keys(TABLES).map(load));
+const loadAll = () => Promise.all([...Object.keys(TABLES).map(load), sb.rpc('td_ext_ready').then(r => { S.extReady = !r.error && !!r.data; }, () => { S.extReady = false; })]);
 const ROLE_TH = { admin: 'ผู้ดูแลระบบ', office: 'หัวหน้าสำนักงาน', division: 'หัวหน้ากอง', head: 'หัวหน้าแผนก', staff: 'เจ้าหน้าที่' };
 const isAdmin = () => S.me && S.me.role === 'admin';
 const isTop = () => S.me && (S.me.role === 'admin' || S.me.role === 'office');
@@ -411,7 +411,7 @@ function groupedOpts(list, sel, q) {
   const out = [], dh = list.filter(m => m.role === 'division' && hit(m)).sort((a, b) => ((divBy(a.division_id) || {}).sort || 0) - ((divBy(b.division_id) || {}).sort || 0));
   if (dh.length) out.push('<optgroup label="หัวหน้ากอง (ให้หัวหน้ากองส่งต่อลงแผนก)">' + dh.map(opt).join('') + '</optgroup>');
   orderedDepts(S.d.depts).forEach(d => { const ms = list.filter(m => m.dept_id === d.id && m.role !== 'division' && hit(m)).sort(ord); if (!ms.length) return; const v = divBy(d.division_id);
-    out.push('<optgroup label="' + esc((v ? v.name.replace(/มูลนิธิ$/, '') + ' › ' : '') + d.name) + '">' + ms.map(opt).join('') + '</optgroup>'); });
+    out.push('<optgroup label="' + esc((v ? v.name.replace(/มูลนิธิ$/, '') + ' › ' : '') + d.name + (d.ext_source ? ' (ส่งเข้า HR Desk)' : '')) + '">' + ms.map(opt).join('') + '</optgroup>'); });
   return out.join('') || (q ? '<option value="" disabled>ไม่พบชื่อที่ค้นหา</option>' : '');
 }
 
@@ -804,11 +804,12 @@ const showErr = m => { const e = $('derr'); if (e) { e.textContent = m; e.style.
 /* ----- งาน ----- */
 function catOptions(sel, did) { const ms = did ? S.d.cats.filter(c => c.dept_id === did && !c.parent_id).sort((a, b) => a.sort - b.sort) : mains(); return '<option value="">— ไม่ระบุ —</option>' + ms.map(c => '<option value="' + c.id + '"' + (sel === c.id ? ' selected' : '') + '>' + esc(c.name) + '</option>' + subs(c.id).map(s => '<option value="' + s.id + '"' + (sel === s.id ? ' selected' : '') + '>&nbsp;&nbsp;› ' + esc(s.name) + '</option>').join('')).join(''); }
 // หัวหน้าสำนักงาน/หัวหน้ากอง: เลือกผู้รับผิดชอบได้ทุกคนในความดูแล (ข้ามแผนก) · งานไปอยู่แผนกของผู้รับ
-const asgPool = () => { const ids = new Set(scopeDepts().filter(d => !d.ext_source).map(d => d.id)); return S.d.members.filter(m => m.active && !m.ext_id && m.id !== S.me.id && (((m.role === 'head' || m.role === 'staff') && ids.has(m.dept_id)) || (m.role === 'division' && isTop()))); };
+const asgPool = () => { const ids = new Set(scopeDepts().filter(d => !d.ext_source).map(d => d.id)), xs = S.dlg && S.dlg.type === 'new' && S.extReady ? new Set(scopeDepts().filter(d => d.ext_source && (isTop() || (isDiv() && d.division_id === S.me.division_id))).map(d => d.id)) : new Set();
+  return S.d.members.filter(m => m.active && m.id !== S.me.id && (m.ext_id ? xs.has(m.dept_id) : (((m.role === 'head' || m.role === 'staff') && ids.has(m.dept_id)) || (m.role === 'division' && isTop())))); };
 function asgOptions(sel, q) { const pool = asgPool(), cur = memberBy(sel); if (cur && !pool.includes(cur)) pool.push(cur); return '<option value="">— ยังไม่มอบหมาย —</option>' + groupedOpts(pool, sel, q); }
-const formTgt = () => { const m = memberBy(val('t_asg')); if (m && m.role === 'division') return { dept_id: null, division_id: m.division_id }; const d = m && m.dept_id ? m.dept_id : (S.dlg && S.dlg.base) || null; return d ? { dept_id: d, division_id: null } : null; };
+const formTgt = () => { const m = memberBy(val('t_asg')); if (m && m.ext_id) return { ext: m }; if (m && m.role === 'division') return { dept_id: null, division_id: m.division_id }; const d = m && m.dept_id ? m.dept_id : (S.dlg && S.dlg.base) || null; return d ? { dept_id: d, division_id: null } : null; };
 const formDept = () => (formTgt() || {}).dept_id || null;
-function asgChg() { const did = formDept(), c = $('t_cat'), cur = c ? c.value : ''; if (!c) return; const keep = cur && (catBy(cur) || {}).dept_id === did ? cur : ''; c.innerHTML = catOptions(keep, did || '__none__'); const n = $('t_dname'), tg = formTgt(); if (n) n.textContent = tg && !tg.dept_id ? 'งานระดับกอง · หัวหน้ากองจะส่งต่อให้หัวหน้าแผนก แล้วหัวหน้าแผนกส่งต่อให้น้อง' : did ? 'งานจะอยู่ใน ' + ((deptBy(did) || {}).name || '') + ((memberBy(val('t_asg')) || {}).role === 'head' ? ' · หัวหน้าแผนกส่งต่อให้น้องได้' : '') : 'ยังไม่มอบหมาย · งานจะอยู่ในแผนกที่เปิดอยู่'; }
+function asgChg() { const did = formDept(), c = $('t_cat'), cur = c ? c.value : ''; if (!c) return; const keep = cur && (catBy(cur) || {}).dept_id === did ? cur : ''; c.innerHTML = catOptions(keep, did || '__none__'); const n = $('t_dname'), tg = formTgt(); if (c) c.disabled = !!(tg && tg.ext); if (n) n.textContent = tg && tg.ext ? '🔗 งานจะส่งเข้า HR Desk ทันที · ติดป้ายจาก' + (isTop() ? 'หัวหน้าสำนักงาน' : 'หัวหน้ากอง') + ' · ทีม HR อัปเดตสถานะที่ HR Desk แล้วขึ้นที่นี่เอง' : tg && !tg.dept_id ? 'งานระดับกอง · หัวหน้ากองจะส่งต่อให้หัวหน้าแผนก แล้วหัวหน้าแผนกส่งต่อให้น้อง' : did ? 'งานจะอยู่ใน ' + ((deptBy(did) || {}).name || '') + ((memberBy(val('t_asg')) || {}).role === 'head' ? ' · หัวหน้าแผนกส่งต่อให้น้องได้' : '') : 'ยังไม่มอบหมาย · งานจะอยู่ในแผนกที่เปิดอยู่'; }
 function asgFind(q) { const e = $('t_asg'); if (!e) return; const cur = e.value; e.innerHTML = asgOptions(cur, q); if (!q) e.value = cur; const first = q && e.querySelector('option[value]:not([value=""])'); if (first && !cur) { e.value = first.value; } asgChg(); }
 function taskForm(t) {
   const pick = isLeader(), asg = isHead() ? members() : [S.me];
@@ -837,6 +838,10 @@ async function saveNew() {
   if (r.start_date && r.due_date && r.due_date < r.start_date) return showErr('กำหนดส่งต้องไม่ก่อนวันเริ่ม');
   const tg = isLeader() ? formTgt() : { dept_id: S.dept };
   if (!tg) return showErr('กรุณาเลือกผู้รับผิดชอบ');
+  if (tg.ext) {
+    const { error } = await sb.rpc('td_ext_assign', { p: { assignee: tg.ext.id, title: r.title, detail: r.detail, due_date: r.due_date } }); if (error) return showErr(error.message);
+    closeDlg(); toast('ส่งงานเข้า HR Desk ให้ ' + tg.ext.nickname + ' แล้ว · จะขึ้นในไม่กี่วินาที'); setTimeout(() => load('tasks').then(() => render(true)), 4000); return;
+  }
   const { error } = await sb.from('td_tasks').insert(Object.assign(r, tg, { created_by: S.me.id, status: 'todo' }));
   if (error) return showErr(error.message);
   const am = memberBy(r.assignee);
