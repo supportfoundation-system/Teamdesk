@@ -1,7 +1,7 @@
 /* Team Desk service worker · ให้ติดตั้งเป็นแอปและเปิดหน้าได้เร็ว
    ข้อมูลงานทั้งหมดดึงสดจาก Supabase เสมอ (ไม่เก็บแคช) */
-const CACHE = 'td-shell-v1';
-const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'td-shell-v2';
+const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
