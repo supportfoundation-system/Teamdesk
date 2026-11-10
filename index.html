@@ -455,7 +455,7 @@ async function start() {
 const VIEWS = {
   dash: ['ภาพรวม', 'สรุปงานของแผนก'], board: ['บอร์ดงาน', 'รอดำเนินการ → กำลังทำ → รอตรวจ → เสร็จ · คลิกงานเพื่ออัปเดต'], list: ['งานทั้งหมด', 'ค้นหา กรอง และส่งออกรายการงาน'],
   mine: ['งานของฉัน', 'งานที่ได้รับมอบหมาย'], stats: ['สถิติ', 'ผลงานรายคน รายงานหลัก และรายเดือน'], team: ['ทีมและงานหลัก', 'สมาชิก บัญชีผู้ใช้ งานหลัก/งานย่อย'],
-  org: ['ภาพรวม', ''], teamall: ['บอร์ดทีม', ''], docs: ['ทะเบียนเรื่องเสนอ', 'แผนกสารบรรณ · รับเรื่อง ส่งเสนอ ติดตามผลพิจารณา และสรุปเรื่องอนุมัติ'], structure: ['โครงสร้างองค์กร', 'ผู้ดูแลระบบ · กอง แผนก หัวหน้าสำนักงาน/กอง และนำเข้าสมาชิก']
+  org: ['ภาพรวม', ''], teamall: ['บอร์ดทีม', ''], docs: ['ทะเบียนเรื่องกลับ', 'แผนกสารบรรณ · บันทึกเรื่องกลับ ส่งคืนหน่วยงาน และสรุปเรื่องอนุมัติ'], structure: ['โครงสร้างองค์กร', 'ผู้ดูแลระบบ · กอง แผนก หัวหน้าสำนักงาน/กอง และนำเข้าสมาชิก']
 };
 /* ไอคอน (เส้น) */
 const IC = {
@@ -517,7 +517,7 @@ function render(keepScroll) {
     '<button onclick="TD.side(true)">' + ico('menu') + '<span>เมนู</span></button>';
   $('app').innerHTML = '<div class="layout"><aside class="side" id="side"><div class="brand"><div class="logo">' + ico('logo') + '</div><div><div class="t1">Team Desk</div><div class="t2">' + esc(CF.ORG_NAME || '') + '</div></div></div>' +
     (isLeader() ? '<nav class="nav">' + nb('org', isTop() ? 'ภาพรวมทั้งสำนักงาน' : 'ภาพรวมกอง') + nb('teamall', isTop() ? 'บอร์ดทีมสำนักงาน' : 'บอร์ดทีมกอง') + '</nav>' : '') +
-    (canDocs() ? '<nav class="nav"><div class="gh">สารบรรณ</div>' + nb('docs', 'ทะเบียนเรื่องเสนอ', S.d.docs.filter(x => x.status === 'recv' || x.status === 'sent' || x.status === 'fix').length) + '</nav>' : '') +
+    (canDocs() ? '<nav class="nav"><div class="gh">สารบรรณ</div>' + nb('docs', 'ทะเบียนเรื่องกลับ', S.d.docs.filter(x => x.status === 'approved').length) + '</nav>' : '') +
     (scopeDepts().length > 1 ? '<div class="deptsel"><select onchange="TD.setDept(this.value)">' + deptOptions(S.dept) + '</select></div>' : '<div class="deptname">' + esc(d ? d.name : '') + (d && divBy(d.division_id) ? '<div class="dv">' + esc(divBy(d.division_id).name) + '</div>' : '') + '</div>') +
     '<nav class="nav">' + (S.dept ? nb('dash', 'ภาพรวมแผนก', over, true) + nb('board', 'บอร์ดงาน') + nb('list', 'งานทั้งหมด') + nb('mine', 'งานของฉัน', mineOpen) + nb('stats', 'สถิติ') + (isHead() ? '<div class="gh">จัดการ</div>' + nb('team', 'ทีมและงานหลัก') : '') : '') +
     (isAdmin() ? '<div class="gh">ผู้ดูแลระบบ</div>' + nb('structure', 'โครงสร้างองค์กร') : '') + '</nav>' +
@@ -531,7 +531,7 @@ function render(keepScroll) {
   if (keepScroll) window.scrollTo(0, y);
 }
 function topActs() {
-  if (S.view === 'docs') return canDocs() ? '<button class="btn" onclick="window.print()">พิมพ์</button><button class="btn" onclick="TD.expDocs()">↓ ส่งออก CSV</button><button class="btn pri" onclick="TD.docNew()">+ รับเรื่องใหม่</button>' : '';
+  if (S.view === 'docs') return canDocs() ? '<button class="btn" onclick="window.print()">พิมพ์</button><button class="btn" onclick="TD.expDocs()">↓ ส่งออก CSV</button><button class="btn pri" onclick="TD.docNew()">+ บันทึกเรื่องกลับ</button>' : '';
   if (S.view === 'structure') return '<button class="btn" onclick="TD.bulk()">⇪ นำเข้าสมาชิก (CSV)</button><button class="btn" onclick="TD.newDivision()">+ กอง</button><button class="btn pri" onclick="TD.newDept()">+ แผนก</button>';
   if (S.view === 'org' || S.view === 'teamall') return '<button class="btn" onclick="window.print()">พิมพ์</button>' + (isLeader() ? '<button class="btn pri" onclick="TD.newTask()">+ มอบหมายงาน</button>' : '');
   if (S.dept && isExt() && ['team', 'list', 'dash', 'board', 'mine'].includes(S.view)) return S.view === 'list' ? '<button class="btn" onclick="TD.expTasks()">↓ ส่งออก CSV</button>' : '';
@@ -1172,131 +1172,124 @@ function expStats() { const { all, rowFor, y, m } = statData(); const hd = ['', 
   download('สถิติ_' + ((dept() || {}).name || '') + '_' + (m === 'all' ? '' : (+m + 1) + '-') + (y + 543) + '.csv', csv([['ผู้รับผิดชอบ'].concat(hd.slice(1))].concat(members(true).filter(x => x.role !== 'head').map(x => r(x.nickname, rowFor(all.filter(t => t.assignee === x.id))))).concat([r('รวมทั้งแผนก', rowFor(all))], [[]], [['งานหลัก'].concat(hd.slice(1))], mains().map(c => r(c.name, rowFor(all.filter(t => { const mc = mainOf(t); return mc && mc.id === c.id; }))))))); }
 
 /* ===================== ส่งออกให้ปุ่มเรียกใช้ ===================== */
-/* ===================== ทะเบียนเรื่องเสนอ (แผนกสารบรรณ) ===================== */
+/* ===================== ทะเบียนเรื่องกลับ (แผนกสารบรรณ) ===================== */
 // เห็นได้เฉพาะ หัวหน้าสำนักงาน / ผู้ดูแลระบบ / สมาชิกแผนกสารบรรณ (RLS: td_doc_access())
 const canDocs = () => !!S.me && (isTop() || /สารบรรณ/.test((deptBy(S.me.dept_id) || {}).name || ''));
-const tile = (l, v, s, c, act) => '<div class="card tile' + (act ? ' clk" onclick="' + act : '') + '" style="--c:' + c + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
-const DST = { recv: ['รับเรื่องแล้ว', 'st-todo'], sent: ['เสนอแล้ว รอผล', 'st-sign'], fix: ['ส่งกลับแก้ไข', 'st-review'], approved: ['อนุมัติ/ลงนามแล้ว', 'st-done'], returned: ['ส่งคืนหน่วยงานแล้ว', 'st-doing'], cancel: ['ยกเลิก/ไม่อนุมัติ', 'st-cancel'] };
-const DST_ORDER = ['recv', 'sent', 'fix', 'approved', 'returned', 'cancel'];
-const DKIND = { approve: 'พิจารณาอนุมัติ', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', other: 'อื่น ๆ' };
+const DST = { approved: ['อนุมัติ/ลงนามแล้ว', 'st-done'], returned: ['ส่งคืนหน่วยงานแล้ว', 'st-doing'], cancel: ['ยกเลิก/ไม่อนุมัติ', 'st-cancel'] };
+const DST_ORDER = ['approved', 'returned', 'cancel'];
+const DKIND = { approve: 'พิจารณาอนุมัติ', pay: 'พิจารณาอนุมัติจ่าย', approve_sign: 'พิจารณาอนุมัติและลงนาม', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', other: 'อื่น ๆ' };
 // หน่วยงานตามรายงานสรุปของแผนกสารบรรณ (เรียงตามลำดับในรายงาน) · พิมพ์ชื่ออื่นเพิ่มได้
 const DAG = ['กองศิลปาชีพ', 'พิพิธภัณฑ์ผ้าฯ', 'ครัวกลางบางไทร', 'ที่ดิน', 'สถาบันสิริกิติ์', 'โครงการก่อสร้างฯ', 'ครัวกลางเกาะเกิด', 'ฟาร์ม 902', 'อาคารโขน', 'จัดแสดงโขน', 'สำนักงานการเงินฯ', 'สำนักเลขาฯ', 'รถยนต์', 'ทอง'];
-const dstPill = s => '<span class="pill ' + (DST[s] || DST.recv)[1] + '">' + (DST[s] || DST.recv)[0] + '</span>';
-const dOpen = d => d.status === 'recv' || d.status === 'sent' || d.status === 'fix';
+const dSt = s => DST[s] || DST.approved;
+const dstPill = s => '<span class="pill ' + dSt(s)[1] + '">' + dSt(s)[0] + '</span>';
+// สถานะพร้อมวันที่ เช่น "ส่งคืนหน่วยงาน 12 พ.ย. 69" / "รอส่งคืน · กลับ 10 พ.ย. 69"
+const dstDate = d => d.status === 'returned' ? '<span class="pill st-doing">ส่งคืนหน่วยงาน' + (d.return_date ? ' ' + fd(d.return_date) : '') + '</span>' : d.status === 'cancel' ? dstPill('cancel') : '<span class="pill st-done">รอส่งคืน' + (d.result_date ? ' · กลับ ' + fd(d.result_date) : '') + '</span>';
 const dMoney = n => n == null || n === '' ? '-' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fdl = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? (+m[3]) + ' ' + TMF[+m[2] - 1] + ' ' + (+m[1] + 543) : ''; };
 const dAgencies = () => { const ex = [...new Set(S.d.docs.map(d => d.agency).filter(a => a && !DAG.includes(a)))].sort((a, b) => a.localeCompare(b, 'th')); return DAG.concat(ex); };
-// รอผลกี่วัน (นับจากวันที่ส่งเสนอ) / รอเสนอกี่วัน (นับจากวันที่รับ)
-const dWait = d => d.status === 'sent' && d.sent_date ? -days(d.sent_date) : (d.status === 'recv' || d.status === 'fix') && d.recv_date ? -days(d.recv_date) : null;
-const dWaitPill = d => { const n = dWait(d); if (n == null || n < 1) return ''; return '<span class="pill ' + (n > 14 ? 'due-bad' : n > 7 ? 'due-soon' : 'due-ok') + '">' + (d.status === 'sent' ? 'รอผล ' : 'รอเสนอ ') + n + ' วัน</span>'; };
-// สถานะตามวันที่ที่กรอก (ถ้ากรอกวันที่ขั้นถัดไป สถานะเลื่อนให้เอง)
-const dAuto = (st, r) => { if (st === 'cancel' || st === 'fix') return st; if (r.return_date) return 'returned'; if (r.result_date && (st === 'recv' || st === 'sent')) return 'approved'; if (r.sent_date && st === 'recv') return 'sent'; return st; };
-const DF = () => { S.docF = S.docF || { q: '', ag: '', st: 'open', mo: '', sel: [] }; return S.docF; };
+// รอส่งคืนกี่วัน (นับจากวันที่เรื่องกลับ)
+const dWaitPill = d => { if (d.status !== 'approved' || !d.result_date) return ''; const n = -days(d.result_date); if (n < 1) return ''; return '<span class="pill ' + (n > 14 ? 'due-bad' : n > 7 ? 'due-soon' : 'due-ok') + '">รอส่งคืน ' + n + ' วัน</span>'; };
+const DF = () => { S.docF = S.docF || { q: '', ag: '', st: '', mo: '', sel: [] }; return S.docF; };
 function docRows() {
   const f = DF(), q = f.q.trim();
-  return S.d.docs.filter(d => (!f.ag || d.agency === f.ag) && (f.st === 'all' || (f.st === 'open' ? dOpen(d) : f.st === 'late' ? (dWait(d) || 0) > 7 : d.status === f.st)) &&
-    (!f.mo || String(d.sent_date || d.recv_date || '').slice(0, 7) === f.mo) &&
+  return S.d.docs.filter(d => (!f.ag || d.agency === f.ag) && (!f.st || d.status === f.st) &&
+    (!f.mo || String(d.result_date || d.return_date || '').slice(0, 7) === f.mo) &&
     (!q || [d.doc_no, d.agency, d.subject, d.party, d.note].some(v => String(v || '').includes(q)) || String(d.amount || '').includes(q.replace(/,/g, ''))))
-    .sort((a, b) => String(b.sent_date || b.recv_date || '').localeCompare(String(a.sent_date || a.recv_date || '')) || String(b.created_at).localeCompare(String(a.created_at)));
+    .sort((a, b) => String(b.result_date || '').localeCompare(String(a.result_date || '')) || String(b.created_at).localeCompare(String(a.created_at)));
 }
 V.docs = () => {
   if (!canDocs()) return '<div class="card empty">หน้านี้สำหรับหัวหน้าสำนักงานและแผนกสารบรรณเท่านั้น</div>';
   const tab = S.docTab || 'list';
-  return '<div class="frow"><div class="seg">' + [['list', 'ทะเบียน / ติดตามสถานะ'], ['report', 'สรุปเรื่องอนุมัติ (รายงาน)']].map(x => '<button class="' + (tab === x[0] ? 'on' : '') + '" onclick="TD.docTab(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div></div>' + (tab === 'report' ? docReport() : docList());
+  return '<div class="frow"><div class="seg">' + [['list', 'ทะเบียนเรื่องกลับ'], ['report', 'สรุปเรื่องอนุมัติ (รายงาน)']].map(x => '<button class="' + (tab === x[0] ? 'on' : '') + '" onclick="TD.docTab(\'' + x[0] + '\')">' + x[1] + '</button>').join('') + '</div></div>' + (tab === 'report' ? docReport() : docList());
 };
 function docList() {
-  const f = DF(), all = S.d.docs, c = s => all.filter(d => d.status === s).length, late = all.filter(d => (dWait(d) || 0) > 7).length, rows = docRows(), selN = f.sel.length;
-  const months = [...new Set(all.map(d => String(d.sent_date || d.recv_date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
-  const tl = '<div class="tiles" style="margin-bottom:16px">' +
-    tile('รับเรื่อง รอเสนอ', c('recv'), 'คลิกเพื่อดูรายการ', 'var(--todo)', "TD.docFilt({st:'recv'})") +
-    tile('เสนอแล้ว รอผล', c('sent'), 'อยู่ระหว่างพิจารณา', 'var(--sign)', "TD.docFilt({st:'sent'})") +
-    tile('ส่งกลับแก้ไข', c('fix'), 'รอหน่วยงานแก้ไข', 'var(--review)', "TD.docFilt({st:'fix'})") +
-    tile('ค้างเกิน 7 วัน', late, 'รอเสนอ/รอผลนาน', 'var(--bad)', "TD.docFilt({st:'late'})") +
-    tile('อนุมัติ/ลงนามแล้ว', c('approved'), 'รอส่งคืนหน่วยงาน', 'var(--done)', "TD.docFilt({st:'approved'})") + '</div>';
+  const f = DF(), all = S.d.docs, rows = docRows(), selN = f.sel.length;
+  const months = [...new Set(all.map(d => String(d.result_date || d.return_date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
   const fr = '<div class="frow"><input class="f search" id="dq" placeholder="ค้นหาเลขที่หนังสือ / เรื่อง / หน่วยงาน / ผู้รับ / จำนวนเงิน…" value="' + esc(f.q) + '" oninput="TD.docQ(this.value)">' +
     '<select class="f" onchange="TD.docFilt({ag:this.value})"><option value="">ทุกหน่วยงาน</option>' + dAgencies().map(a => '<option' + (f.ag === a ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select>' +
     '<select class="f" onchange="TD.docFilt({mo:this.value})"><option value="">ทุกเดือน</option>' + months.map(m => '<option value="' + m + '"' + (f.mo === m ? ' selected' : '') + '>' + TMF[+m.slice(5, 7) - 1] + ' ' + (+m.slice(0, 4) + 543) + '</option>').join('') + '</select>' +
-    '<div class="seg">' + [['open', 'ยังไม่เสร็จ'], ['late', 'ค้างเกิน 7 วัน'], ['all', 'ทั้งหมด']].concat(DST_ORDER.map(s => [s, DST[s][0]])).map(x => '<button class="' + (f.st === x[0] ? 'on' : '') + '" onclick="TD.docFilt({st:\'' + x[0] + '\'})">' + x[1] + '</button>').join('') + '</div>' +
-    (f.q || f.ag || f.mo || f.st !== 'open' ? '<button class="btn sm ghost" onclick="TD.docClr()">ล้างตัวกรอง</button>' : '') + '</div>';
+    '<div class="seg">' + DST_ORDER.map(s => '<button class="' + (f.st === s ? 'on' : '') + '" onclick="TD.docFilt({st:\'' + (f.st === s ? '' : s) + '\'})" title="กดซ้ำเพื่อดูทั้งหมด">' + DST[s][0] + ' ' + all.filter(d => d.status === s).length + '</button>').join('') + '</div>' +
+    (f.q || f.ag || f.mo || f.st ? '<button class="btn sm ghost" onclick="TD.docClr()">ล้างตัวกรอง</button>' : '') + '</div>';
   const bar = selN ? '<div class="card" style="padding:12px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center"><b>เลือก ' + selN + ' เรื่อง</b><span class="mu">วันที่</span><label class="fld" style="width:170px;flex:none">' + dateInp('d_bulk', today()) + '</label>' +
-    '<button class="btn pri" onclick="TD.docBulk(\'sent\')">บันทึกส่งเสนอ</button><button class="btn" onclick="TD.docBulk(\'approved\')">ได้รับผล อนุมัติ/ลงนามแล้ว</button><button class="btn" onclick="TD.docBulk(\'returned\')">ส่งคืนหน่วยงานแล้ว</button><button class="btn ghost" onclick="TD.docSelClr()">ยกเลิกการเลือก</button></div>' : '';
+    '<button class="btn pri" onclick="TD.docBulk(\'returned\')">บันทึกส่งคืนหน่วยงาน</button><button class="btn" onclick="TD.docBulk(\'approved\')">บันทึกวันที่เรื่องกลับ</button><button class="btn ghost" onclick="TD.docSelClr()">ยกเลิกการเลือก</button></div>' : '';
   const ids = rows.map(d => d.id), allOn = ids.length && ids.every(i => f.sel.includes(i));
-  const tb = rows.length ? '<div class="card tw"><table class="t"><thead><tr><th style="width:34px"><input type="checkbox"' + (allOn ? ' checked' : '') + ' onclick="TD.docSelAll(this.checked)" title="เลือกทั้งหมดที่แสดง"></th><th>เลขที่ / วันที่รับ</th><th>หน่วยงาน</th><th>เรื่อง</th><th class="r">จำนวนเงิน</th><th>ส่งเสนอ</th><th>ผล / ส่งคืน</th><th>สถานะ</th></tr></thead><tbody>' +
-    rows.map(d => '<tr class="clk" onclick="TD.docOpen(\'' + d.id + '\')"><td onclick="event.stopPropagation()"><input type="checkbox"' + (f.sel.includes(d.id) ? ' checked' : '') + ' onclick="TD.docSel(\'' + d.id + '\')"></td><td><b>' + esc(d.doc_no || '—') + '</b><div class="mu">' + (d.recv_date ? 'รับ ' + fd(d.recv_date) : '') + '</div></td><td style="min-width:120px">' + esc(d.agency) + '</td><td style="min-width:260px"><b>' + esc(d.subject) + '</b><div class="mu">' + esc(DKIND[d.kind] || '') + (d.party ? ' · ' + esc(d.party) : '') + '</div></td><td class="r">' + dMoney(d.amount) + '</td><td style="white-space:nowrap">' + (d.sent_date ? fd(d.sent_date) : '<span class="mu">—</span>') + '</td><td style="white-space:nowrap">' + (d.result_date ? 'ผล ' + fd(d.result_date) : '') + (d.return_date ? '<div class="mu">คืน ' + fd(d.return_date) + '</div>' : '') + (!d.result_date && !d.return_date ? '<span class="mu">—</span>' : '') + '</td><td>' + dstPill(d.status) + ' ' + dWaitPill(d) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="card empty">' + (all.length ? 'ไม่พบเรื่องตามตัวกรอง' : 'ยังไม่มีเรื่อง — กด "+ รับเรื่องใหม่"') + '</div>';
+  const tb = rows.length ? '<div class="card tw"><table class="t"><thead><tr><th style="width:34px"><input type="checkbox"' + (allOn ? ' checked' : '') + ' onclick="TD.docSelAll(this.checked)" title="เลือกทั้งหมดที่แสดง"></th><th>เลขที่หนังสือ</th><th>หน่วยงาน</th><th>เรื่อง</th><th class="r">จำนวนเงิน</th><th>วันที่เรื่องกลับ</th><th>สถานะ</th></tr></thead><tbody>' +
+    rows.map(d => '<tr class="clk" onclick="TD.docOpen(\'' + d.id + '\')"><td onclick="event.stopPropagation()"><input type="checkbox"' + (f.sel.includes(d.id) ? ' checked' : '') + ' onclick="TD.docSel(\'' + d.id + '\')"></td><td><b>' + esc(d.doc_no || '—') + '</b></td><td style="min-width:120px">' + esc(d.agency) + '</td><td style="min-width:260px"><b>' + esc(d.subject) + '</b><div class="mu">' + esc(DKIND[d.kind] || '') + (d.party ? ' · ' + esc(d.party) : '') + '</div></td><td class="r">' + dMoney(d.amount) + '</td><td style="white-space:nowrap">' + (d.result_date ? fd(d.result_date) : '<span class="mu">—</span>') + '</td><td>' + dstDate(d) + ' ' + dWaitPill(d) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="card empty">' + (all.length ? 'ไม่พบเรื่องตามตัวกรอง' : 'ยังไม่มีเรื่อง — กด "+ บันทึกเรื่องกลับ"') + '</div>';
   const sum = rows.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-  return tl + fr + bar + '<div class="mu" style="margin-bottom:8px">' + rows.length + ' เรื่อง · รวม ' + dMoney(sum) + ' บาท · ติ๊กหลายเรื่องเพื่อบันทึกวันที่ส่งเสนอ/รับผล/ส่งคืนพร้อมกัน</div>' + tb;
+  return fr + bar + '<div class="mu" style="margin-bottom:8px">' + rows.length + ' เรื่อง · รวม ' + dMoney(sum) + ' บาท · ติ๊กหลายเรื่องเพื่อบันทึกวันที่ส่งคืนหน่วยงานพร้อมกัน</div>' + tb;
 }
-// รายงาน "ณ วันที่ ... สรุปเรื่องอนุมัติ N เรื่อง" เรียงตามหน่วยงาน (รูปแบบเดียวกับไฟล์ Excel ของแผนกสารบรรณ)
+// รายงาน "ณ วันที่ ... สรุปเรื่องอนุมัติ N เรื่อง" ตามวันที่เรื่องกลับ · แสดงเฉพาะหน่วยงานที่มีเรื่องในวันนั้น
+const repItems = date => S.d.docs.filter(d => d.result_date === date && d.status !== 'cancel').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+const repAgs = items => { const has = new Set(items.map(d => d.agency)); return DAG.filter(a => has.has(a)).concat([...has].filter(a => !DAG.includes(a))); };
 function docReport() {
-  const dates = [...new Set(S.d.docs.map(d => d.sent_date).filter(Boolean))].sort().reverse(), R = S.docRep = S.docRep || { date: '', st: false };
+  const dates = [...new Set(S.d.docs.filter(d => d.status !== 'cancel').map(d => d.result_date).filter(Boolean))].sort().reverse(), R = S.docRep = S.docRep || { date: '', st: true };
   if (!R.date || (!dates.includes(R.date) && R.date !== 'none')) R.date = dates[0] || 'none';
-  const items = S.d.docs.filter(d => d.sent_date === R.date && d.status !== 'cancel').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
-  const ags = DAG.concat([...new Set(items.map(d => d.agency).filter(a => !DAG.includes(a)))]), tot = items.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-  let rows = ''; ags.forEach((a, i) => { const l = items.filter(d => d.agency === a), sp = Math.max(1, l.length);
-    if (!l.length) { rows += '<tr><td class="r">' + (i + 1) + '</td><td style="min-width:130px">' + esc(a) + '</td><td></td><td></td><td class="r"></td>' + (R.st ? '<td></td>' : '') + '</tr>'; return; }
-    l.forEach((d, j) => { rows += '<tr class="clk" onclick="TD.docOpen(\'' + d.id + '\')">' + (j === 0 ? '<td class="r" rowspan="' + sp + '" style="vertical-align:top">' + (i + 1) + '</td><td rowspan="' + sp + '" style="vertical-align:top;min-width:130px"><b>' + esc(a) + '</b></td>' : '') + '<td>' + (j + 1) + '. ' + esc(d.subject) + (d.doc_no ? ' <span class="mu">(' + esc(d.doc_no) + ')</span>' : '') + '</td><td>' + esc(d.party || '') + '</td><td class="r">' + dMoney(d.amount) + '</td>' + (R.st ? '<td>' + dstPill(d.status) + '</td>' : '') + '</tr>'; }); });
-  return '<div class="frow"><span class="mu">ณ วันที่ส่งเสนอ</span><select class="f" onchange="TD.docRep({date:this.value})">' + (dates.length ? dates.map(x => '<option value="' + x + '"' + (x === R.date ? ' selected' : '') + '>' + fdl(x) + ' (' + S.d.docs.filter(d => d.sent_date === x && d.status !== 'cancel').length + ' เรื่อง)</option>').join('') : '<option value="none">ยังไม่มีเรื่องที่ส่งเสนอ</option>') + '</select>' +
-    '<label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox"' + (R.st ? ' checked' : '') + ' onchange="TD.docRep({st:this.checked})"> แสดงสถานะ</label></div>' +
+  const items = repItems(R.date), ags = repAgs(items), tot = items.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  let rows = ''; ags.forEach((a, i) => { const l = items.filter(d => d.agency === a), sp = l.length;
+    l.forEach((d, j) => { rows += '<tr class="clk" onclick="TD.docOpen(\'' + d.id + '\')">' + (j === 0 ? '<td class="r" rowspan="' + sp + '" style="vertical-align:top">' + (i + 1) + '</td><td rowspan="' + sp + '" style="vertical-align:top;min-width:130px"><b>' + esc(a) + '</b></td>' : '') + '<td>' + (j + 1) + '. ' + esc(d.subject) + (d.doc_no ? ' <span class="mu">(' + esc(d.doc_no) + ')</span>' : '') + '</td><td>' + esc(d.party || '') + '</td><td class="r">' + dMoney(d.amount) + '</td>' + (R.st ? '<td style="white-space:nowrap">' + dstDate(d) + '</td>' : '') + '</tr>'; }); });
+  if (!rows) rows = '<tr><td colspan="' + (R.st ? 6 : 5) + '" class="empty">ยังไม่มีเรื่องกลับในวันที่นี้</td></tr>';
+  return '<div class="frow"><span class="mu">ณ วันที่เรื่องกลับ</span><select class="f" onchange="TD.docRep({date:this.value})">' + (dates.length ? dates.map(x => '<option value="' + x + '"' + (x === R.date ? ' selected' : '') + '>' + fdl(x) + ' (' + repItems(x).length + ' เรื่อง)</option>').join('') : '<option value="none">ยังไม่มีเรื่องกลับ</option>') + '</select>' +
+    '<label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox"' + (R.st ? ' checked' : '') + ' onchange="TD.docRep({st:this.checked})"> แสดงสถานะ / วันที่ส่งคืนหน่วยงาน</label></div>' +
     '<div class="card tw"><div style="padding:14px 16px 4px;text-align:center;font-weight:700;font-size:16px">ณ วันที่ ' + (R.date === 'none' ? '—' : fdl(R.date)) + ' &nbsp;สรุปเรื่องอนุมัติ ' + items.length + ' เรื่อง</div>' +
     '<table class="t"><thead><tr><th class="r" style="width:50px">ลำดับ</th><th>เรื่องของหน่วยงาน</th><th>หลักการ/ค่าใช้จ่าย</th><th>บุคคล/หน่วยงาน</th><th class="r">จำนวนเงิน</th>' + (R.st ? '<th>สถานะ</th>' : '') + '</tr></thead><tbody>' + rows +
     '<tr><td></td><td colspan="3" class="r"><b>รวมทั้งสิ้น</b></td><td class="r"><b>' + dMoney(tot) + '</b></td>' + (R.st ? '<td></td>' : '') + '</tr></tbody></table></div>' +
-    '<div class="mu" style="margin-top:8px">รายงานรวมเรื่องที่ "วันที่ส่งเสนอ" ตรงกับวันที่เลือก (ไม่นับเรื่องที่ยกเลิก) · คลิกแถวเพื่อแก้ไข · กด "พิมพ์" หรือ "ส่งออก CSV" ด้านบน</div>';
+    '<div class="mu" style="margin-top:8px">รวมเรื่องที่ "วันที่เรื่องกลับ" ตรงกับวันที่เลือก (ไม่นับเรื่องที่ยกเลิก) · แสดงเฉพาะหน่วยงานที่มีเรื่อง · คลิกแถวเพื่อแก้ไข · กด "พิมพ์" หรือ "ส่งออก CSV" ด้านบน</div>';
 }
 function docForm(d) {
-  const ags = dAgencies(), st = d.status || 'recv';
+  const ags = dAgencies(), st = d.status || 'approved';
   return '<div id="derr" class="err" style="display:none"></div>' +
-    '<div class="row2"><label class="fld">เลขที่หนังสือ / เลขรับ<input class="f" id="d_no" value="' + esc(d.doc_no || '') + '" placeholder="เช่น สศ.123/2569"></label>' +
+    '<div class="row2"><label class="fld">เลขที่หนังสือ<input class="f" id="d_no" value="' + esc(d.doc_no || '') + '" placeholder="เช่น สศ.123/2569"></label>' +
     '<label class="fld">เรื่องของหน่วยงาน<input class="f" id="d_ag" list="d_agl" value="' + esc(d.agency || '') + '" placeholder="เลือกหรือพิมพ์ชื่อหน่วยงาน" autocomplete="off"><datalist id="d_agl">' + ags.map(a => '<option value="' + esc(a) + '">').join('') + '</datalist></label></div>' +
     '<label class="fld">หลักการ / ค่าใช้จ่าย (เรื่อง)<textarea class="f" id="d_sub" rows="3" style="height:auto;padding:10px 12px" placeholder="เช่น พิจารณาอนุมัติจัดซื้ออุปกรณ์เครื่องเสียงพร้อมติดตั้ง รวมภาษีมูลค่าเพิ่ม">' + esc(d.subject || '') + '</textarea></label>' +
     '<div class="row3"><label class="fld">ประเภทเรื่อง<select class="f" id="d_kind">' + Object.keys(DKIND).map(k => '<option value="' + k + '"' + ((d.kind || 'approve') === k ? ' selected' : '') + '>' + DKIND[k] + '</option>').join('') + '</select></label>' +
     '<label class="fld">บุคคล / หน่วยงาน (ผู้รับ)<input class="f" id="d_party" value="' + esc(d.party || '') + '" placeholder="เช่น บริษัท ... จำกัด"></label>' +
     '<label class="fld">จำนวนเงิน (บาท)<input class="f" id="d_amt" type="number" step="0.01" min="0" value="' + (d.amount == null ? '' : d.amount) + '" placeholder="เว้นว่าง = -"></label></div>' +
-    '<div class="row2"><label class="fld">วันที่รับเรื่อง' + dateInp('d_recv', d.recv_date || '') + '</label><label class="fld">วันที่ส่งเสนอ' + dateInp('d_sent', d.sent_date || '') + '</label></div>' +
-    '<div class="row2"><label class="fld">วันที่ได้รับผล / ลงนามกลับ' + dateInp('d_res', d.result_date || '') + '</label><label class="fld">วันที่ส่งคืนหน่วยงาน' + dateInp('d_ret', d.return_date || '') + '</label></div>' +
+    '<div class="row2"><label class="fld">วันที่เรื่องกลับ' + dateInp('d_res', d.result_date || '') + '</label><label class="fld">วันที่ส่งคืนหน่วยงาน' + dateInp('d_ret', d.return_date || '') + '</label></div>' +
     '<div class="row2"><label class="fld">สถานะ<select class="f" id="d_st">' + DST_ORDER.map(s => '<option value="' + s + '"' + (st === s ? ' selected' : '') + '>' + DST[s][0] + '</option>').join('') + '</select></label>' +
-    '<label class="fld">หมายเหตุ<input class="f" id="d_note" value="' + esc(d.note || '') + '" placeholder="เช่น รอเอกสารแนบเพิ่ม"></label></div>' +
-    '<div class="mu" style="font-size:12.5px">กรอกวันที่ขั้นถัดไปแล้ว สถานะเลื่อนให้อัตโนมัติ (ส่งเสนอ → เสนอแล้ว รอผล · ได้รับผล → อนุมัติ/ลงนามแล้ว · ส่งคืน → ส่งคืนหน่วยงานแล้ว)</div>';
+    '<label class="fld">หมายเหตุ<input class="f" id="d_note" value="' + esc(d.note || '') + '" placeholder="เช่น ลงนามแล้ว รอสำเนา"></label></div>' +
+    '<div class="mu" style="font-size:12.5px">กรอกวันที่ส่งคืนหน่วยงานแล้ว สถานะเปลี่ยนเป็น "ส่งคืนหน่วยงานแล้ว" ให้อัตโนมัติ</div>';
 }
-function docNew() { if (!canDocs()) return; S.dlg = { type: 'doc' }; dlg('รับเรื่องใหม่', 'บันทึกเรื่องที่รับจากหน่วยงานเพื่อเสนอหัวหน้าสำนักงาน', docForm({ recv_date: today(), status: 'recv' }), '<button class="btn ghost" onclick="TD.close()">ยกเลิก</button><button class="btn" onclick="TD.docSave(true)">บันทึกและรับเรื่องถัดไป</button><button class="btn pri" onclick="TD.docSave()">บันทึก</button>', 760); setTimeout(() => { const e = $('d_ag'); if (e) e.focus(); }, 50); }
+function docNew() { if (!canDocs()) return; S.dlg = { type: 'doc' }; dlg('บันทึกเรื่องกลับ', 'บันทึกเรื่องที่กลับมาจากการพิจารณา เพื่อส่งคืนหน่วยงานและสรุปรายงาน', docForm({ result_date: today(), status: 'approved' }), '<button class="btn ghost" onclick="TD.close()">ยกเลิก</button><button class="btn" onclick="TD.docSave(true)">บันทึกและเพิ่มเรื่องถัดไป</button><button class="btn pri" onclick="TD.docSave()">บันทึก</button>', 760); setTimeout(() => { const e = $('d_ag'); if (e) e.focus(); }, 50); }
 function docOpen(id) {
   const d = S.d.docs.find(x => x.id === id); if (!d) return; S.dlg = { type: 'doc', id };
   const logs = S.d.doclogs.filter(l => l.doc_id === id).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-  const hist = '<div class="secttl" style="margin-top:14px">ประวัติการติดตาม</div><div class="inl" style="margin:6px 0 8px"><input class="f" id="d_log" placeholder="บันทึกการติดตาม เช่น โทรสอบถามหน้าห้องแล้ว รอลงนาม" style="flex:1"><button class="btn" onclick="TD.docLog()">บันทึก</button></div>' +
-    (logs.length ? logs.map(l => { const m = memberBy(l.member_id); return '<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line2)">' + av(m, 28) + '<div style="flex:1;min-width:0"><b>' + esc(m ? m.nickname : 'ระบบ') + '</b> ' + (l.status_to ? dstPill(l.status_to) + ' ' : '') + esc(l.text || '') + '<div class="mu">' + fdt(l.created_at) + '</div></div></div>'; }).join('') : '<div class="mu">ยังไม่มีประวัติ</div>');
+  const hist = '<div class="secttl" style="margin-top:14px">ประวัติการติดตาม</div><div class="inl" style="margin:6px 0 8px"><input class="f" id="d_log" placeholder="บันทึกการติดตาม เช่น โทรแจ้งหน่วยงานมารับเรื่องแล้ว" style="flex:1"><button class="btn" onclick="TD.docLog()">บันทึก</button></div>' +
+    (logs.length ? logs.map(l => { const m = memberBy(l.member_id); return '<div style="display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line2)">' + av(m, 28) + '<div style="flex:1;min-width:0"><b>' + esc(m ? m.nickname : 'ระบบ') + '</b> ' + (l.status_to && DST[l.status_to] ? dstPill(l.status_to) + ' ' : '') + esc(l.text || '') + '<div class="mu">' + fdt(l.created_at) + '</div></div></div>'; }).join('') : '<div class="mu">ยังไม่มีประวัติ</div>');
   const by = memberBy(d.created_by);
-  dlg(esc(d.subject.length > 70 ? d.subject.slice(0, 70) + '…' : d.subject), esc(d.agency) + ' · ' + dstPill(d.status) + ' ' + dWaitPill(d) + (by ? ' · บันทึกโดย ' + esc(by.nickname) + ' ' + fdt(d.created_at) : ''), docForm(d) + hist,
+  dlg(esc(d.subject.length > 70 ? d.subject.slice(0, 70) + '…' : d.subject), esc(d.agency) + ' · ' + dstDate(d) + ' ' + dWaitPill(d) + (by ? ' · บันทึกโดย ' + esc(by.nickname) + ' ' + fdt(d.created_at) : ''), docForm(d) + hist,
     '<button class="btn ghost danger" onclick="TD.docDel()">ลบ</button><span style="flex:1"></span><button class="btn ghost" onclick="TD.close()">ปิด</button><button class="btn pri" onclick="TD.docSave()">บันทึก</button>', 760);
 }
 async function docSave(again) {
   const id = S.dlg && S.dlg.id, old = id ? S.d.docs.find(x => x.id === id) : null, err = m => { const e = $('derr'); e.textContent = m; e.style.display = 'block'; };
   const amt = val('d_amt').trim(), r = { doc_no: val('d_no').trim() || null, agency: val('d_ag').trim(), subject: val('d_sub').trim(), kind: val('d_kind'), party: val('d_party').trim() || null, amount: amt === '' ? null : Math.round(Number(amt) * 100) / 100,
-    recv_date: val('d_recv') || null, sent_date: val('d_sent') || null, result_date: val('d_res') || null, return_date: val('d_ret') || null, note: val('d_note').trim() || null, updated_by: S.me.id, updated_at: new Date().toISOString() };
+    result_date: val('d_res') || null, return_date: val('d_ret') || null, note: val('d_note').trim() || null, updated_by: S.me.id, updated_at: new Date().toISOString() };
   if (!r.agency) return err('ระบุหน่วยงาน'); if (!r.subject) return err('ระบุเรื่อง (หลักการ/ค่าใช้จ่าย)'); if (amt !== '' && !(Number(amt) >= 0)) return err('จำนวนเงินไม่ถูกต้อง');
-  let st = val('d_st'); const chosen = st !== (old ? old.status : 'recv'); if (!chosen) st = dAuto(st, r); r.status = st;
-  if (st === 'sent' && !r.sent_date) r.sent_date = today(); if (st === 'approved' && !r.result_date) r.result_date = today(); if (st === 'returned' && !r.return_date) r.return_date = today();
+  let st = val('d_st'); const chosen = st !== (old ? old.status : 'approved'); if (!chosen && st === 'approved' && r.return_date) st = 'returned'; r.status = st;
+  if (st === 'returned' && !r.return_date) r.return_date = today(); if (st !== 'cancel' && !r.result_date) r.result_date = today();
   const q = old ? sb.from('td_docs').update(r).eq('id', id).select() : sb.from('td_docs').insert({ ...r, created_by: S.me.id }).select();
   const { data, error } = await q; if (error) return err(error.message);
-  const row = (data || [])[0]; if (row && (!old || old.status !== st)) await sb.from('td_doc_logs').insert({ doc_id: row.id, member_id: S.me.id, status_to: st, text: old ? 'เปลี่ยนสถานะ' : 'รับเรื่อง' });
-  await Promise.all([load('docs'), load('doclogs')]); toast(old ? 'บันทึกแล้ว' : 'รับเรื่องแล้ว'); closeDlg(); render(true);
-  if (again) { docNew(); const keep = r.agency; setTimeout(() => { const e = $('d_ag'); if (e) e.value = keep; const s = $('d_sub'); if (s) s.focus(); }, 60); }
+  const row = (data || [])[0]; if (row && (!old || old.status !== st)) await sb.from('td_doc_logs').insert({ doc_id: row.id, member_id: S.me.id, status_to: st, text: old ? 'เปลี่ยนสถานะ' : 'บันทึกเรื่องกลับ' });
+  await Promise.all([load('docs'), load('doclogs')]); toast(old ? 'บันทึกแล้ว' : 'บันทึกเรื่องกลับแล้ว'); closeDlg(); render(true);
+  if (again) { const keep = r.agency, kd = r.result_date; docNew(); setTimeout(() => { const e = $('d_ag'); if (e) e.value = keep; if (kd && $('d_res')) dpSet('d_res', kd); const s = $('d_sub'); if (s) s.focus(); }, 60); }
 }
 async function docDel() { const id = S.dlg && S.dlg.id; if (!id || !confirm('ลบเรื่องนี้ออกจากทะเบียน? กู้คืนไม่ได้')) return; const { error } = await sb.from('td_docs').delete().eq('id', id); if (error) return toast(error.message, true); DF().sel = DF().sel.filter(x => x !== id); await Promise.all([load('docs'), load('doclogs')]); closeDlg(); toast('ลบแล้ว'); render(true); }
 async function docLog() { const id = S.dlg && S.dlg.id, t = val('d_log').trim(); if (!id || !t) return; const { error } = await sb.from('td_doc_logs').insert({ doc_id: id, member_id: S.me.id, text: t }); if (error) return toast(error.message, true); await load('doclogs'); docOpen(id); }
 async function docBulk(st) {
   const f = DF(), dt = val('d_bulk') || today(), list = S.d.docs.filter(d => f.sel.includes(d.id)); if (!list.length) return;
-  const col = { sent: 'sent_date', approved: 'result_date', returned: 'return_date' }[st];
-  if (!confirm('บันทึก "' + DST[st][0] + '" วันที่ ' + fdl(dt) + ' จำนวน ' + list.length + ' เรื่อง?')) return;
-  const { error } = await sb.from('td_docs').update({ status: st, [col]: dt, updated_by: S.me.id, updated_at: new Date().toISOString() }).in('id', list.map(d => d.id)); if (error) return toast(error.message, true);
-  await sb.from('td_doc_logs').insert(list.map(d => ({ doc_id: d.id, member_id: S.me.id, status_to: st, text: 'บันทึกพร้อมกัน ' + list.length + ' เรื่อง · วันที่ ' + fdl(dt) })));
-  f.sel = []; await Promise.all([load('docs'), load('doclogs')]); toast('บันทึก ' + DST[st][0] + ' แล้ว ' + list.length + ' เรื่อง'); render(true);
+  const label = st === 'returned' ? 'ส่งคืนหน่วยงาน' : 'วันที่เรื่องกลับ', upd = st === 'returned' ? { status: 'returned', return_date: dt } : { result_date: dt };
+  if (!confirm('บันทึก "' + label + '" วันที่ ' + fdl(dt) + ' จำนวน ' + list.length + ' เรื่อง?')) return;
+  const { error } = await sb.from('td_docs').update({ ...upd, updated_by: S.me.id, updated_at: new Date().toISOString() }).in('id', list.map(d => d.id)); if (error) return toast(error.message, true);
+  await sb.from('td_doc_logs').insert(list.map(d => ({ doc_id: d.id, member_id: S.me.id, status_to: st === 'returned' ? 'returned' : null, text: 'บันทึก' + label + 'พร้อมกัน ' + list.length + ' เรื่อง · ' + fdl(dt) })));
+  f.sel = []; await Promise.all([load('docs'), load('doclogs')]); toast('บันทึก' + label + 'แล้ว ' + list.length + ' เรื่อง'); render(true);
 }
 function expDocs() {
+  const stx = d => d.status === 'returned' ? 'ส่งคืนหน่วยงาน ' + fdl(d.return_date) : d.status === 'cancel' ? DST.cancel[0] : 'รอส่งคืน';
   if ((S.docTab || 'list') === 'report') {
-    const R = S.docRep || {}, items = S.d.docs.filter(d => d.sent_date === R.date && d.status !== 'cancel').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))), ags = DAG.concat([...new Set(items.map(d => d.agency).filter(a => !DAG.includes(a)))]), out = [['ณ วันที่ ' + fdl(R.date) + ' สรุปเรื่องอนุมัติ ' + items.length + ' เรื่อง'], ['ลำดับ', 'เรื่องของหน่วยงาน', 'หลักการ/ค่าใช้จ่าย', 'บุคคล/หน่วยงาน', 'จำนวนเงิน', 'เลขที่หนังสือ', 'สถานะ']];
-    ags.forEach((a, i) => { const l = items.filter(d => d.agency === a); if (!l.length) out.push([i + 1, a, '', '', '', '', '']); l.forEach((d, j) => out.push([j ? '' : i + 1, j ? '' : a, (j + 1) + '. ' + d.subject, d.party || '', d.amount == null ? '-' : d.amount, d.doc_no || '', DST[d.status][0]])); });
+    const R = S.docRep || {}, items = repItems(R.date), ags = repAgs(items), out = [['ณ วันที่ ' + fdl(R.date) + ' สรุปเรื่องอนุมัติ ' + items.length + ' เรื่อง'], ['ลำดับ', 'เรื่องของหน่วยงาน', 'หลักการ/ค่าใช้จ่าย', 'บุคคล/หน่วยงาน', 'จำนวนเงิน', 'เลขที่หนังสือ', 'สถานะ']];
+    ags.forEach((a, i) => items.filter(d => d.agency === a).forEach((d, j) => out.push([j ? '' : i + 1, j ? '' : a, (j + 1) + '. ' + d.subject, d.party || '', d.amount == null ? '-' : d.amount, d.doc_no || '', stx(d)])));
     out.push(['', '', '', 'รวมทั้งสิ้น', items.reduce((s, d) => s + (Number(d.amount) || 0), 0), '', '']); return download('สรุปเรื่องอนุมัติ_' + (R.date || '') + '.csv', csv(out));
   }
-  download('ทะเบียนเรื่องเสนอ.csv', csv([['เลขที่หนังสือ', 'หน่วยงาน', 'ประเภท', 'หลักการ/ค่าใช้จ่าย', 'บุคคล/หน่วยงาน', 'จำนวนเงิน', 'วันที่รับ', 'วันที่ส่งเสนอ', 'วันที่ได้รับผล', 'วันที่ส่งคืน', 'สถานะ', 'หมายเหตุ']].concat(docRows().map(d => [d.doc_no || '', d.agency, DKIND[d.kind] || '', d.subject, d.party || '', d.amount == null ? '-' : d.amount, isoToBE(d.recv_date), isoToBE(d.sent_date), isoToBE(d.result_date), isoToBE(d.return_date), DST[d.status][0], d.note || '']))));
+  download('ทะเบียนเรื่องกลับ.csv', csv([['เลขที่หนังสือ', 'หน่วยงาน', 'ประเภท', 'หลักการ/ค่าใช้จ่าย', 'บุคคล/หน่วยงาน', 'จำนวนเงิน', 'วันที่เรื่องกลับ', 'วันที่ส่งคืนหน่วยงาน', 'สถานะ', 'หมายเหตุ']].concat(docRows().map(d => [d.doc_no || '', d.agency, DKIND[d.kind] || '', d.subject, d.party || '', d.amount == null ? '-' : d.amount, isoToBE(d.result_date), isoToBE(d.return_date), stx(d), d.note || '']))));
 }
 const DOCS_API = {
   docTab: v => { S.docTab = v; render(); }, docFilt: o => { Object.assign(DF(), o, { sel: [] }); S.docTab = 'list'; render(); }, docClr: () => { S.docF = null; render(); },
