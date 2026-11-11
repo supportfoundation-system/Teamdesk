@@ -1177,7 +1177,7 @@ function expStats() { const { all, rowFor, y, m } = statData(); const hd = ['', 
 const canDocs = () => !!S.me && (isTop() || /สารบรรณ/.test((deptBy(S.me.dept_id) || {}).name || ''));
 const DST = { approved: ['อนุมัติ/ลงนามแล้ว', 'st-done'], returned: ['ส่งคืนหน่วยงานแล้ว', 'st-doing'], cancel: ['ยกเลิก/ไม่อนุมัติ', 'st-cancel'] };
 const DST_ORDER = ['approved', 'returned', 'cancel'];
-const DKIND = { approve: 'พิจารณาอนุมัติ', pay: 'พิจารณาอนุมัติจ่าย', approve_sign: 'พิจารณาอนุมัติและลงนาม', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', other: 'อื่น ๆ' };
+const DKIND = { approve: 'พิจารณาอนุมัติ', pay: 'พิจารณาอนุมัติจ่าย', approve_pay: 'พิจารณาอนุมัติและจ่าย', approve_sign: 'พิจารณาอนุมัติและลงนาม', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', other: 'อื่น ๆ' };
 // หน่วยงานตามรายงานสรุปของแผนกสารบรรณ (เรียงตามลำดับในรายงาน) · พิมพ์ชื่ออื่นเพิ่มได้
 const DAG = ['กองศิลปาชีพ', 'พิพิธภัณฑ์ผ้าฯ', 'ครัวกลางบางไทร', 'ที่ดิน', 'สถาบันสิริกิติ์', 'โครงการก่อสร้างฯ', 'ครัวกลางเกาะเกิด', 'ฟาร์ม 902', 'อาคารโขน', 'จัดแสดงโขน', 'สำนักงานการเงินฯ', 'สำนักเลขาฯ', 'รถยนต์', 'ทอง'];
 const dSt = s => DST[s] || DST.approved;
@@ -1243,7 +1243,7 @@ function docForm(d) {
     '<label class="fld">หลักการ / ค่าใช้จ่าย (เรื่อง)<textarea class="f" id="d_sub" rows="3" style="height:auto;padding:10px 12px" placeholder="เช่น พิจารณาอนุมัติจัดซื้ออุปกรณ์เครื่องเสียงพร้อมติดตั้ง รวมภาษีมูลค่าเพิ่ม">' + esc(d.subject || '') + '</textarea></label>' +
     '<div class="row3"><label class="fld">ประเภทเรื่อง<select class="f" id="d_kind">' + Object.keys(DKIND).map(k => '<option value="' + k + '"' + ((d.kind || 'approve') === k ? ' selected' : '') + '>' + DKIND[k] + '</option>').join('') + '</select></label>' +
     '<label class="fld">บุคคล / หน่วยงาน (ผู้รับ)<input class="f" id="d_party" value="' + esc(d.party || '') + '" placeholder="เช่น บริษัท ... จำกัด"></label>' +
-    '<label class="fld">จำนวนเงิน (บาท)<input class="f" id="d_amt" type="number" step="0.01" min="0" value="' + (d.amount == null ? '' : d.amount) + '" placeholder="เว้นว่าง = -"></label></div>' +
+    '<label class="fld">จำนวนเงิน (บาท)<input class="f" id="d_amt" type="text" inputmode="decimal" autocomplete="off" style="text-align:right" value="' + (d.amount == null ? '' : dMoney(d.amount)) + '" placeholder="0.00 (เว้นว่าง = -)" oninput="TD.amtIn(this)" onblur="TD.amtFmt(this)"></label></div>' +
     '<div class="row2"><label class="fld">วันที่เรื่องกลับ' + dateInp('d_res', d.result_date || '') + '</label><label class="fld">วันที่ส่งคืนหน่วยงาน' + dateInp('d_ret', d.return_date || '') + '</label></div>' +
     '<div class="row2"><label class="fld">สถานะ<select class="f" id="d_st">' + DST_ORDER.map(s => '<option value="' + s + '"' + (st === s ? ' selected' : '') + '>' + DST[s][0] + '</option>').join('') + '</select></label>' +
     '<label class="fld">หมายเหตุ<input class="f" id="d_note" value="' + esc(d.note || '') + '" placeholder="เช่น ลงนามแล้ว รอสำเนา"></label></div>' +
@@ -1261,7 +1261,7 @@ function docOpen(id) {
 }
 async function docSave(again) {
   const id = S.dlg && S.dlg.id, old = id ? S.d.docs.find(x => x.id === id) : null, err = m => { const e = $('derr'); e.textContent = m; e.style.display = 'block'; };
-  const amt = val('d_amt').trim(), r = { doc_no: val('d_no').trim() || null, agency: val('d_ag').trim(), subject: val('d_sub').trim(), kind: val('d_kind'), party: val('d_party').trim() || null, amount: amt === '' ? null : Math.round(Number(amt) * 100) / 100,
+  const amt = val('d_amt').replace(/,/g, '').trim(), r = { doc_no: val('d_no').trim() || null, agency: val('d_ag').trim(), subject: val('d_sub').trim(), kind: val('d_kind'), party: val('d_party').trim() || null, amount: amt === '' ? null : Math.round(Number(amt) * 100) / 100,
     result_date: val('d_res') || null, return_date: val('d_ret') || null, note: val('d_note').trim() || null, updated_by: S.me.id, updated_at: new Date().toISOString() };
   if (!r.agency) return err('ระบุหน่วยงาน'); if (!r.subject) return err('ระบุเรื่อง (หลักการ/ค่าใช้จ่าย)'); if (amt !== '' && !(Number(amt) >= 0)) return err('จำนวนเงินไม่ถูกต้อง');
   let st = val('d_st'); const chosen = st !== (old ? old.status : 'approved'); if (!chosen && st === 'approved' && r.return_date) st = 'returned'; r.status = st;
@@ -1296,6 +1296,9 @@ const DOCS_API = {
   docQ: v => { DF().q = v; const pos = $('dq').selectionStart; render(true); const e = $('dq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   docSel: id => { const s = DF().sel, i = s.indexOf(id); i < 0 ? s.push(id) : s.splice(i, 1); render(true); }, docSelAll: on => { DF().sel = on ? docRows().map(d => d.id) : []; render(true); }, docSelClr: () => { DF().sel = []; render(true); },
   docRep: o => { S.docRep = Object.assign(S.docRep || {}, o); render(true); },
+  // ช่องจำนวนเงินแบบ 000,000.00 · ใส่ลูกน้ำให้ระหว่างพิมพ์ · ออกจากช่องแล้วเติมทศนิยม 2 ตำแหน่ง
+  amtIn: el => { const v = el.value, pos = el.selectionStart || 0, before = v.slice(0, pos).replace(/[^\d.]/g, '').length; let t = v.replace(/[^\d.]/g, ''); const i = t.indexOf('.'); if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2); const [a, b] = t.split('.'); const a2 = (a || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','); const out = a2 + (b !== undefined ? '.' + b : ''); el.value = out; let n = 0, k = 0; while (k < out.length && n < before) { if (/[\d.]/.test(out[k])) n++; k++; } try { el.setSelectionRange(k, k); } catch (e) {} },
+  amtFmt: el => { const t = el.value.replace(/,/g, '').trim(); if (t === '') return; const n = Number(t); el.value = isNaN(n) ? '' : dMoney(n); },
   docNew, docOpen, docSave, docDel, docLog, docBulk, expDocs
 };
 
