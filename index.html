@@ -301,6 +301,34 @@ input[type=range]{accent-color:var(--pri)}
 @media (max-width:380px){.tb,.otb,.otb.lead{grid-template-columns:1fr 1fr}.pc .st span{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media print{.side,.acts,.frow,.appbar,.tabbar,.scrim,.icon-btn{display:none!important}.main{padding:0}body::before{display:none}.card{box-shadow:none}.clock .ct{border:0;padding:0;font-size:14px;box-shadow:none}}
+/* ===== รายงานสรุปเรื่องอนุมัติ (ทะเบียนเรื่องกลับ) ===== */
+.rp-hero{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;padding:22px 24px;margin-bottom:18px;border-radius:var(--r);background:var(--grad);color:#fff;box-shadow:var(--sh-2);position:relative;overflow:hidden}
+.rp-hero::after{content:'';position:absolute;right:-60px;top:-80px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.1);pointer-events:none}
+.rp-ey{font-size:12.5px;opacity:.85;letter-spacing:.3px}.rp-ttl{font-size:26px;font-weight:700;line-height:1.3}.rp-sub{font-size:14px;opacity:.9}
+.rp-stats{display:flex;flex-wrap:wrap;gap:10px;position:relative;z-index:1}
+.rp-st{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:10px 16px;min-width:120px;display:flex;flex-direction:column;backdrop-filter:blur(4px)}
+.rp-st span{font-size:12px;opacity:.9}.rp-st b{font-size:22px;line-height:1.3;font-variant-numeric:tabular-nums}.rp-st b small{font-size:13px;opacity:.8;font-weight:500}.rp-st>small{font-size:11.5px;opacity:.9}
+.rp-prog i{display:block;height:6px;border-radius:4px;background:rgba(255,255,255,.25);margin:4px 0 3px;overflow:hidden}.rp-prog i em{display:block;height:100%;background:#fff;border-radius:4px}
+.rp-sec{--c:#6366f1;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:var(--r);box-shadow:var(--sh-1);margin-bottom:14px;overflow:hidden;break-inside:avoid}
+.rp-sh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;background:color-mix(in srgb,var(--c) 12%,var(--surface));border-bottom:1px solid color-mix(in srgb,var(--c) 22%,var(--line))}
+.rp-no{width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none}
+.rp-ag{font-size:16.5px;color:color-mix(in srgb,var(--c) 75%,var(--ink));flex:1;min-width:120px}
+.rp-cnt{font-size:12.5px;font-weight:600;padding:3px 11px;border-radius:999px;background:var(--surface);color:var(--c);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.rp-sum{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink)}.rp-sum small{font-weight:500;color:var(--muted);font-size:12px}
+.rp-it{display:grid;grid-template-columns:30px 1fr auto auto;gap:6px 14px;align-items:center;padding:12px 18px;border-top:1px solid var(--line2);cursor:pointer}
+.rp-it:first-of-type{border-top:0}.rp-it:nth-of-type(even){background:color-mix(in srgb,var(--c) 4%,var(--surface))}.rp-it:hover{background:color-mix(in srgb,var(--c) 9%,var(--surface))}
+.rp-ino{width:26px;height:26px;border-radius:8px;background:color-mix(in srgb,var(--c) 14%,var(--surface));color:var(--c);display:grid;place-items:center;font-weight:700;font-size:13px}
+.rp-subj{font-weight:600;line-height:1.5}.rp-meta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-top:4px;font-size:12.5px;color:var(--muted)}
+.rp-amt{font-weight:700;font-size:15.5px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.rp-amt.rp-na{color:var(--muted);font-weight:500}
+.rp-stc{text-align:right}
+.rp-k{display:inline-flex;padding:2px 9px;border-radius:7px;font-size:11.5px;font-weight:600}
+.rp-k-a{background:var(--a-t);color:var(--a-ink)}.rp-k-b{background:var(--b-t);color:var(--b-ink)}.rp-k-s{background:var(--sign-t);color:var(--sign)}.rp-k-t{background:var(--todo-t);color:var(--todo)}
+.rp-grand{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:16px 22px;border-radius:var(--r);background:var(--grad-soft);border:1px solid var(--line);font-weight:600}
+.rp-grand b{font-size:22px;font-variant-numeric:tabular-nums}.rp-grand small{font-size:13px;color:var(--muted);font-weight:500}
+.rp-empty{text-align:center;padding:40px 20px}.rp-empty-ic{font-size:40px;margin-bottom:6px}
+table.t tr.rp-alt td{background:var(--surface-2)}table.t tr.rp-tot td{background:var(--pri-t);font-size:15px}
+@media (max-width:760px){.rp-it{grid-template-columns:26px 1fr;}.rp-amt,.rp-stc{grid-column:2;text-align:left}.rp-ttl{font-size:21px}.rp-st{min-width:0;flex:1 1 40%}}
+@media print{.rp-hero,.rp-sec,.rp-sh,.rp-no,.rp-ino,.rp-k,.rp-grand,.rp-it,table.t tr.rp-alt td{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rp-hero{box-shadow:none}.rp-sec{box-shadow:none}.rp-print+.mu{display:none}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -1221,19 +1249,34 @@ function docList() {
 // รายงาน "ณ วันที่ ... สรุปเรื่องอนุมัติ N เรื่อง" ตามวันที่เรื่องกลับ · แสดงเฉพาะหน่วยงานที่มีเรื่องในวันนั้น
 const repItems = date => S.d.docs.filter(d => d.result_date === date && d.status !== 'cancel').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
 const repAgs = items => { const has = new Set(items.map(d => d.agency)); return DAG.filter(a => has.has(a)).concat([...has].filter(a => !DAG.includes(a))); };
+// สีประจำหน่วยงาน (ตามลำดับในรายงาน) · หน่วยงานอื่นได้สีวนตามชื่อ
+const RP_COL = ['#6366f1', '#0ea5b7', '#d97706', '#059669', '#e11d48', '#7c3aed', '#2563eb', '#c2410c', '#0d9488', '#db2777', '#4f46e5', '#65a30d', '#9333ea', '#b45309'];
+const agCol = a => { const i = DAG.indexOf(a); if (i >= 0) return RP_COL[i % RP_COL.length]; let h = 0; for (const ch of String(a)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return RP_COL[h % RP_COL.length]; };
+const KCOL = { approve: 'b', pay: 'a', approve_pay: 'a', approve_sign: 's', sign: 's', info: 't', other: 't' };
+const kChip = k => '<span class="rp-k rp-k-' + (KCOL[k] || 't') + '">' + esc(DKIND[k] || 'อื่น ๆ') + '</span>';
 function docReport() {
-  const dates = [...new Set(S.d.docs.filter(d => d.status !== 'cancel').map(d => d.result_date).filter(Boolean))].sort().reverse(), R = S.docRep = S.docRep || { date: '', st: true };
+  const dates = [...new Set(S.d.docs.filter(d => d.status !== 'cancel').map(d => d.result_date).filter(Boolean))].sort().reverse(), R = S.docRep = S.docRep || { date: '', st: true, mode: 'color' };
+  if (!R.mode) R.mode = 'color';
   if (!R.date || (!dates.includes(R.date) && R.date !== 'none')) R.date = dates[0] || 'none';
-  const items = repItems(R.date), ags = repAgs(items), tot = items.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-  let rows = ''; ags.forEach((a, i) => { const l = items.filter(d => d.agency === a), sp = l.length;
-    l.forEach((d, j) => { rows += '<tr class="clk" onclick="TD.docOpen(\'' + d.id + '\')">' + (j === 0 ? '<td class="r" rowspan="' + sp + '" style="vertical-align:top">' + (i + 1) + '</td><td rowspan="' + sp + '" style="vertical-align:top;min-width:130px"><b>' + esc(a) + '</b></td>' : '') + '<td>' + (j + 1) + '. ' + esc(d.subject) + (d.doc_no ? ' <span class="mu">(' + esc(d.doc_no) + ')</span>' : '') + '</td><td>' + esc(d.party || '') + '</td><td class="r">' + dMoney(d.amount) + '</td>' + (R.st ? '<td style="white-space:nowrap">' + dstDate(d) + '</td>' : '') + '</tr>'; }); });
-  if (!rows) rows = '<tr><td colspan="' + (R.st ? 6 : 5) + '" class="empty">ยังไม่มีเรื่องกลับในวันที่นี้</td></tr>';
-  return '<div class="frow"><span class="mu">ณ วันที่เรื่องกลับ</span><select class="f" onchange="TD.docRep({date:this.value})">' + (dates.length ? dates.map(x => '<option value="' + x + '"' + (x === R.date ? ' selected' : '') + '>' + fdl(x) + ' (' + repItems(x).length + ' เรื่อง)</option>').join('') : '<option value="none">ยังไม่มีเรื่องกลับ</option>') + '</select>' +
-    '<label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox"' + (R.st ? ' checked' : '') + ' onchange="TD.docRep({st:this.checked})"> แสดงสถานะ / วันที่ส่งคืนหน่วยงาน</label></div>' +
-    '<div class="card tw"><div style="padding:14px 16px 4px;text-align:center;font-weight:700;font-size:16px">ณ วันที่ ' + (R.date === 'none' ? '—' : fdl(R.date)) + ' &nbsp;สรุปเรื่องอนุมัติ ' + items.length + ' เรื่อง</div>' +
-    '<table class="t"><thead><tr><th class="r" style="width:50px">ลำดับ</th><th>เรื่องของหน่วยงาน</th><th>หลักการ/ค่าใช้จ่าย</th><th>บุคคล/หน่วยงาน</th><th class="r">จำนวนเงิน</th>' + (R.st ? '<th>สถานะ</th>' : '') + '</tr></thead><tbody>' + rows +
-    '<tr><td></td><td colspan="3" class="r"><b>รวมทั้งสิ้น</b></td><td class="r"><b>' + dMoney(tot) + '</b></td>' + (R.st ? '<td></td>' : '') + '</tr></tbody></table></div>' +
-    '<div class="mu" style="margin-top:8px">รวมเรื่องที่ "วันที่เรื่องกลับ" ตรงกับวันที่เลือก (ไม่นับเรื่องที่ยกเลิก) · แสดงเฉพาะหน่วยงานที่มีเรื่อง · คลิกแถวเพื่อแก้ไข · กด "พิมพ์" หรือ "ส่งออก CSV" ด้านบน</div>';
+  const items = repItems(R.date), ags = repAgs(items), tot = items.reduce((s, d) => s + (Number(d.amount) || 0), 0), nRet = items.filter(d => d.status === 'returned').length, nWait = items.length - nRet, pct = items.length ? Math.round(100 * nRet / items.length) : 0;
+  const bar = '<div class="frow"><span class="mu">ณ วันที่เรื่องกลับ</span><select class="f" onchange="TD.docRep({date:this.value})">' + (dates.length ? dates.map(x => '<option value="' + x + '"' + (x === R.date ? ' selected' : '') + '>' + fdl(x) + ' (' + repItems(x).length + ' เรื่อง)</option>').join('') : '<option value="none">ยังไม่มีเรื่องกลับ</option>') + '</select>' +
+    '<div class="seg">' + [['color', 'การ์ดสี'], ['table', 'ตารางแบบ Excel']].map(x => '<button class="' + (R.mode === x[0] ? 'on' : '') + '" onclick="TD.docRep({mode:\'' + x[0] + '\'})">' + x[1] + '</button>').join('') + '</div>' +
+    '<label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox"' + (R.st ? ' checked' : '') + ' onchange="TD.docRep({st:this.checked})"> แสดงสถานะ / วันที่ส่งคืนหน่วยงาน</label></div>';
+  const hero = '<div class="rp-hero"><div class="rp-hl"><div class="rp-ey">รายงานแผนกสารบรรณ · สรุปเรื่องอนุมัติ</div><div class="rp-ttl">ณ วันที่ ' + (R.date === 'none' ? '—' : fdl(R.date)) + '</div><div class="rp-sub">' + items.length + ' เรื่อง จาก ' + ags.length + ' หน่วยงาน</div></div>' +
+    '<div class="rp-stats"><div class="rp-st"><span>จำนวนเรื่อง</span><b>' + items.length + '</b></div><div class="rp-st"><span>ยอดเงินรวม (บาท)</span><b>' + dMoney(tot) + '</b></div><div class="rp-st"><span>หน่วยงาน</span><b>' + ags.length + '</b></div>' +
+    '<div class="rp-st rp-prog"><span>ส่งคืนหน่วยงานแล้ว</span><b>' + nRet + ' <small>/ ' + items.length + '</small></b><i><em style="width:' + pct + '%"></em></i><small>' + (nWait ? 'รอส่งคืน ' + nWait + ' เรื่อง' : items.length ? 'ส่งคืนครบแล้ว ✓' : '') + '</small></div></div></div>';
+  if (!items.length) return bar + hero + '<div class="card rp-empty"><div class="rp-empty-ic">📭</div><b>ยังไม่มีเรื่องกลับในวันที่นี้</b><div class="mu">กด "+ บันทึกเรื่องกลับ" ด้านบน แล้วกรอกวันที่เรื่องกลับ รายงานจะสรุปให้อัตโนมัติ</div></div>';
+  if (R.mode === 'table') {
+    let rows = ''; ags.forEach((a, i) => { const l = items.filter(d => d.agency === a), sp = l.length, c = agCol(a);
+      l.forEach((d, j) => { rows += '<tr class="clk' + (i % 2 ? ' rp-alt' : '') + '" onclick="TD.docOpen(\'' + d.id + '\')">' + (j === 0 ? '<td class="r" rowspan="' + sp + '" style="vertical-align:top;border-left:4px solid ' + c + '">' + (i + 1) + '</td><td rowspan="' + sp + '" style="vertical-align:top;min-width:130px"><b style="color:' + c + '">' + esc(a) + '</b></td>' : '') + '<td>' + (j + 1) + '. ' + esc(d.subject) + (d.doc_no ? ' <span class="mu">(' + esc(d.doc_no) + ')</span>' : '') + '</td><td>' + esc(d.party || '') + '</td><td class="r">' + dMoney(d.amount) + '</td>' + (R.st ? '<td style="white-space:nowrap">' + dstDate(d) + '</td>' : '') + '</tr>'; }); });
+    return bar + hero + '<div class="card tw rp-print"><table class="t"><thead><tr><th class="r" style="width:50px">ลำดับ</th><th>เรื่องของหน่วยงาน</th><th>หลักการ/ค่าใช้จ่าย</th><th>บุคคล/หน่วยงาน</th><th class="r">จำนวนเงิน</th>' + (R.st ? '<th>สถานะ</th>' : '') + '</tr></thead><tbody>' + rows +
+      '<tr class="rp-tot"><td></td><td colspan="3" class="r"><b>รวมทั้งสิ้น ' + items.length + ' เรื่อง</b></td><td class="r"><b>' + dMoney(tot) + '</b></td>' + (R.st ? '<td></td>' : '') + '</tr></tbody></table></div>';
+  }
+  const secs = ags.map((a, i) => { const l = items.filter(d => d.agency === a), c = agCol(a), sub = l.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    return '<section class="rp-sec" style="--c:' + c + '"><header class="rp-sh"><span class="rp-no">' + (i + 1) + '</span><b class="rp-ag">' + esc(a) + '</b><span class="rp-cnt">' + l.length + ' เรื่อง</span><span class="rp-sum">' + dMoney(sub) + ' <small>บาท</small></span></header>' +
+      l.map((d, j) => '<div class="rp-it" onclick="TD.docOpen(\'' + d.id + '\')"><span class="rp-ino">' + (j + 1) + '</span><div class="rp-body"><div class="rp-subj">' + esc(d.subject) + '</div><div class="rp-meta">' + kChip(d.kind) + (d.party ? '<span>👤 ' + esc(d.party) + '</span>' : '') + (d.doc_no ? '<span>📄 ' + esc(d.doc_no) + '</span>' : '') + '</div></div><div class="rp-amt' + (d.amount == null ? ' rp-na' : '') + '">' + dMoney(d.amount) + '</div>' + (R.st ? '<div class="rp-stc">' + dstDate(d) + '</div>' : '') + '</div>').join('') + '</section>'; }).join('');
+  return bar + hero + '<div class="rp-print">' + secs + '<div class="rp-grand"><span>รวมทั้งสิ้น ' + items.length + ' เรื่อง · ' + ags.length + ' หน่วยงาน</span><b>' + dMoney(tot) + ' <small>บาท</small></b></div></div>' +
+    '<div class="mu" style="margin-top:8px">รวมเรื่องที่ "วันที่เรื่องกลับ" ตรงกับวันที่เลือก (ไม่นับเรื่องที่ยกเลิก) · คลิกเรื่องเพื่อแก้ไข · พิมพ์ได้ทั้งแบบการ์ดสีและแบบตาราง</div>';
 }
 function docForm(d) {
   const ags = dAgencies(), st = d.status || 'approved';
