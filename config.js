@@ -13,7 +13,7 @@ window.TD_CONFIG = {
 window.DESK_SUITE = {
   APP: "team",
   // ลิงก์เว็บแอประบบจองรถ (Apps Script) รูปแบบ https://script.google.com/macros/s/…/exec
-  CAR_APP_URL: "",
+  CAR_APP_URL: "https://script.google.com/macros/s/AKfycbxKdI8U4pPNWEaTd3vGlCZgl3fUw0drBNZxmtDwCRLzmpy7oUl4RnpvlioJxIB8v3TMAQ/exec",
   // ลิงก์ HR Desk (เว้นว่างได้ ถ้าว่างจะไม่แสดงในแผ่นสลับแอป)
   HR_DESK_URL: "",
   // "inapp" = เปิดระบบจองรถเต็มจอในแอป · "newtab" = เปิดแท็บใหม่
