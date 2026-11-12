@@ -8,3 +8,14 @@ window.TD_CONFIG = {
   // ต้องตรงกับฟังก์ชัน td_email() ใน schema.sql
   EMAIL_DOMAIN: "teamdesk.local"
 };
+
+/* Desk Suite · เชื่อมแอปในชุด (แท็บจองรถ การ์ดสถานะรถ และแผ่นสลับแอป) */
+window.DESK_SUITE = {
+  APP: "team",
+  // ลิงก์เว็บแอประบบจองรถ (Apps Script) รูปแบบ https://script.google.com/macros/s/…/exec
+  CAR_APP_URL: "",
+  // ลิงก์ HR Desk (เว้นว่างได้ ถ้าว่างจะไม่แสดงในแผ่นสลับแอป)
+  HR_DESK_URL: "",
+  // "inapp" = เปิดระบบจองรถเต็มจอในแอป · "newtab" = เปิดแท็บใหม่
+  CAR_OPEN: "inapp"
+};
