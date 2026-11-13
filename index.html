@@ -329,6 +329,7 @@ input[type=range]{accent-color:var(--pri)}
 table.t tr.rp-alt td{background:var(--surface-2)}table.t tr.rp-tot td{background:var(--pri-t);font-size:15px}
 @media (max-width:760px){.rp-it{grid-template-columns:26px 1fr;}.rp-amt,.rp-stc{grid-column:2;text-align:left}.rp-ttl{font-size:21px}.rp-st{min-width:0;flex:1 1 40%}}
 @media print{.rp-hero,.rp-sec,.rp-sh,.rp-no,.rp-ino,.rp-k,.rp-grand,.rp-it,table.t tr.rp-alt td{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rp-hero{box-shadow:none}.rp-sec{box-shadow:none}.rp-print+.mu{display:none}}
+.dup-warn{display:block;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--bad-t);color:var(--bad);font-size:12.5px;font-weight:600;line-height:1.45}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -1279,10 +1280,14 @@ function docReport() {
   return bar + hero + '<div class="rp-print">' + secs + '<div class="rp-grand"><span>รวมทั้งสิ้น ' + items.length + ' เรื่อง · ' + ags.length + ' หน่วยงาน</span><b>' + dMoney(tot) + ' <small>บาท</small></b></div></div>' +
     '<div class="mu" style="margin-top:8px">รวมเรื่องที่ "วันที่เรื่องกลับ" ตรงกับวันที่เลือก (ไม่นับเรื่องที่ยกเลิก) · คลิกเรื่องเพื่อแก้ไข · พิมพ์ได้ทั้งแบบการ์ดสีและแบบตาราง</div>';
 }
+// เลขที่หนังสือซ้ำ: เทียบแบบไม่สนช่องว่าง/ตัวพิมพ์ · ไม่นับเรื่องที่กำลังแก้ไข
+const docNoKey = v => String(v || '').replace(/\s+/g, '').toLowerCase();
+const docDup = (no, selfId) => { const k = docNoKey(no); return k ? S.d.docs.find(x => x.id !== selfId && docNoKey(x.doc_no) === k) || null : null; };
+const dupMsg = d => d ? '⚠️ เลขที่หนังสือนี้ซ้ำกับเรื่อง: ' + esc(d.agency) + ' — ' + esc(d.subject.length > 50 ? d.subject.slice(0, 50) + '…' : d.subject) + (d.result_date ? ' (กลับ ' + fd(d.result_date) + ')' : '') : '';
 function docForm(d) {
   const ags = dAgencies(), st = d.status || 'approved';
   return '<div id="derr" class="err" style="display:none"></div>' +
-    '<div class="row2"><label class="fld">เลขที่หนังสือ<input class="f" id="d_no" value="' + esc(d.doc_no || '') + '" placeholder="เช่น สศ.123/2569"></label>' +
+    '<div class="row2"><label class="fld">เลขที่หนังสือ<input class="f" id="d_no" value="' + esc(d.doc_no || '') + '" placeholder="เช่น สศ.123/2569" autocomplete="off" oninput="TD.docNoChk(this.value)"><span id="d_nodup" class="dup-warn"' + (docDup(d.doc_no, S.dlg && S.dlg.id) ? '' : ' style="display:none"') + '>' + dupMsg(docDup(d.doc_no, S.dlg && S.dlg.id)) + '</span></label>' +
     '<label class="fld">เรื่องของหน่วยงาน<input class="f" id="d_ag" list="d_agl" value="' + esc(d.agency || '') + '" placeholder="เลือกหรือพิมพ์ชื่อหน่วยงาน" autocomplete="off"><datalist id="d_agl">' + ags.map(a => '<option value="' + esc(a) + '">').join('') + '</datalist></label></div>' +
     '<label class="fld">หลักการ / ค่าใช้จ่าย (เรื่อง)<textarea class="f" id="d_sub" rows="3" style="height:auto;padding:10px 12px" placeholder="เช่น พิจารณาอนุมัติจัดซื้ออุปกรณ์เครื่องเสียงพร้อมติดตั้ง รวมภาษีมูลค่าเพิ่ม">' + esc(d.subject || '') + '</textarea></label>' +
     '<div class="row3"><label class="fld">ประเภทเรื่อง<select class="f" id="d_kind">' + Object.keys(DKIND).map(k => '<option value="' + k + '"' + ((d.kind || 'approve') === k ? ' selected' : '') + '>' + DKIND[k] + '</option>').join('') + '</select></label>' +
@@ -1307,6 +1312,7 @@ async function docSave(again) {
   const id = S.dlg && S.dlg.id, old = id ? S.d.docs.find(x => x.id === id) : null, err = m => { const e = $('derr'); e.textContent = m; e.style.display = 'block'; };
   const amt = val('d_amt').replace(/,/g, '').trim(), r = { doc_no: val('d_no').trim() || null, agency: val('d_ag').trim(), subject: val('d_sub').trim(), kind: val('d_kind'), party: val('d_party').trim() || null, amount: amt === '' ? null : Math.round(Number(amt) * 100) / 100,
     result_date: val('d_res') || null, return_date: val('d_ret') || null, note: val('d_note').trim() || null, updated_by: S.me.id, updated_at: new Date().toISOString() };
+  const dup = docDup(r.doc_no, id); if (dup && !confirm('⚠️ เลขที่หนังสือซ้ำ\n\n"' + r.doc_no + '" มีอยู่แล้วในทะเบียน:\n• ' + dup.agency + ' — ' + dup.subject.slice(0, 80) + (dup.result_date ? '\n• วันที่เรื่องกลับ ' + fdl(dup.result_date) : '') + '\n\nต้องการบันทึกซ้ำหรือไม่?')) return;
   if (!r.agency) return err('ระบุหน่วยงาน'); if (!r.subject) return err('ระบุเรื่อง (หลักการ/ค่าใช้จ่าย)'); if (amt !== '' && !(Number(amt) >= 0)) return err('จำนวนเงินไม่ถูกต้อง');
   let st = val('d_st'); const chosen = st !== (old ? old.status : 'approved'); if (!chosen && st === 'approved' && r.return_date) st = 'returned'; r.status = st;
   if (st === 'returned' && !r.return_date) r.return_date = today(); if (st !== 'cancel' && !r.result_date) r.result_date = today();
@@ -1340,6 +1346,7 @@ const DOCS_API = {
   docQ: v => { DF().q = v; const pos = $('dq').selectionStart; render(true); const e = $('dq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   docSel: id => { const s = DF().sel, i = s.indexOf(id); i < 0 ? s.push(id) : s.splice(i, 1); render(true); }, docSelAll: on => { DF().sel = on ? docRows().map(d => d.id) : []; render(true); }, docSelClr: () => { DF().sel = []; render(true); },
   docRep: o => { S.docRep = Object.assign(S.docRep || {}, o); render(true); },
+  docNoChk: v => { const e = $('d_nodup'); if (!e) return; const d = docDup(v, S.dlg && S.dlg.id); e.innerHTML = dupMsg(d); e.style.display = d ? '' : 'none'; },
   // ช่องจำนวนเงินแบบ 000,000.00 · ใส่ลูกน้ำให้ระหว่างพิมพ์ · ออกจากช่องแล้วเติมทศนิยม 2 ตำแหน่ง
   amtIn: el => { const v = el.value, pos = el.selectionStart || 0, before = v.slice(0, pos).replace(/[^\d.]/g, '').length; let t = v.replace(/[^\d.]/g, ''); const i = t.indexOf('.'); if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2); const [a, b] = t.split('.'); const a2 = (a || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ','); const out = a2 + (b !== undefined ? '.' + b : ''); el.value = out; let n = 0, k = 0; while (k < out.length && n < before) { if (/[\d.]/.test(out[k])) n++; k++; } try { el.setSelectionRange(k, k); } catch (e) {} },
   amtFmt: el => { const t = el.value.replace(/,/g, '').trim(); if (t === '') return; const n = Number(t); el.value = isNaN(n) ? '' : dMoney(n); },
