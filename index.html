@@ -1207,7 +1207,7 @@ function expStats() { const { all, rowFor, y, m } = statData(); const hd = ['', 
 const canDocs = () => !!S.me && (isTop() || /สารบรรณ/.test((deptBy(S.me.dept_id) || {}).name || ''));
 const DST = { approved: ['อนุมัติ/ลงนามแล้ว', 'st-done'], returned: ['ส่งคืนหน่วยงานแล้ว', 'st-doing'], cancel: ['ยกเลิก/ไม่อนุมัติ', 'st-cancel'] };
 const DST_ORDER = ['approved', 'returned', 'cancel'];
-const DKIND = { approve: 'พิจารณาอนุมัติ', pay: 'พิจารณาอนุมัติจ่าย', approve_pay: 'พิจารณาอนุมัติและจ่าย', approve_sign: 'พิจารณาอนุมัติและลงนาม', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', other: 'อื่น ๆ' };
+const DKIND = { approve: 'พิจารณาอนุมัติ', pay: 'พิจารณาอนุมัติจ่าย', approve_pay: 'พิจารณาอนุมัติและจ่าย', approve_sign: 'พิจารณาอนุมัติและลงนาม', sign: 'พิจารณาลงนาม', info: 'เพื่อทราบ', info_sign: 'เพื่อทราบและลงนาม', other: 'อื่น ๆ' };
 // หน่วยงานตามรายงานสรุปของแผนกสารบรรณ (เรียงตามลำดับในรายงาน) · พิมพ์ชื่ออื่นเพิ่มได้
 const DAG = ['กองศิลปาชีพ', 'พิพิธภัณฑ์ผ้าฯ', 'ครัวกลางบางไทร', 'ที่ดิน', 'สถาบันสิริกิติ์', 'โครงการก่อสร้างฯ', 'ครัวกลางเกาะเกิด', 'ฟาร์ม 902', 'อาคารโขน', 'จัดแสดงโขน', 'สำนักงานการเงินฯ', 'สำนักเลขาฯ', 'รถยนต์', 'ทอง'];
 const dSt = s => DST[s] || DST.approved;
@@ -1254,7 +1254,7 @@ const repAgs = items => { const has = new Set(items.map(d => d.agency)); return 
 // สีประจำหน่วยงาน (ตามลำดับในรายงาน) · หน่วยงานอื่นได้สีวนตามชื่อ
 const RP_COL = ['#6366f1', '#0ea5b7', '#d97706', '#059669', '#e11d48', '#7c3aed', '#2563eb', '#c2410c', '#0d9488', '#db2777', '#4f46e5', '#65a30d', '#9333ea', '#b45309'];
 const agCol = a => { const i = DAG.indexOf(a); if (i >= 0) return RP_COL[i % RP_COL.length]; let h = 0; for (const ch of String(a)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return RP_COL[h % RP_COL.length]; };
-const KCOL = { approve: 'b', pay: 'a', approve_pay: 'a', approve_sign: 's', sign: 's', info: 't', other: 't' };
+const KCOL = { approve: 'b', pay: 'a', approve_pay: 'a', approve_sign: 's', sign: 's', info: 't', info_sign: 's', other: 't' };
 const kChip = k => '<span class="rp-k rp-k-' + (KCOL[k] || 't') + '">' + esc(DKIND[k] || 'อื่น ๆ') + '</span>';
 function docReport() {
   const dates = [...new Set(S.d.docs.filter(d => d.status !== 'cancel').map(d => d.result_date).filter(Boolean))].sort().reverse(), R = S.docRep = S.docRep || { date: '', st: true, mode: 'color' };
