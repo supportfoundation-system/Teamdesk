@@ -330,6 +330,23 @@ table.t tr.rp-alt td{background:var(--surface-2)}table.t tr.rp-tot td{background
 @media (max-width:760px){.rp-it{grid-template-columns:26px 1fr;}.rp-amt,.rp-stc{grid-column:2;text-align:left}.rp-ttl{font-size:21px}.rp-st{min-width:0;flex:1 1 40%}}
 @media print{.rp-hero,.rp-sec,.rp-sh,.rp-no,.rp-ino,.rp-k,.rp-grand,.rp-it,table.t tr.rp-alt td{-webkit-print-color-adjust:exact;print-color-adjust:exact}.rp-hero{box-shadow:none}.rp-sec{box-shadow:none}.rp-print+.mu{display:none}}
 .dup-warn{display:block;margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--bad-t);color:var(--bad);font-size:12.5px;font-weight:600;line-height:1.45}
+/* ค้นหาแบบละเอียด (ทะเบียนเรื่องกลับ) */
+.dsr{padding:16px 18px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.dsr-q{position:relative}.dsr-q .f{width:100%;max-width:none;padding-left:40px;height:46px;font-size:15.5px}
+.dsr-row .seg{max-width:100%;overflow-x:auto;flex-wrap:nowrap}.dsr-ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.6;pointer-events:none}
+.dsr-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}.dsr-g .fld{margin:0}
+.dsr-rng{display:flex;align-items:center;gap:6px;margin-top:5px}.dsr-rng .f{min-width:0;flex:1;text-align:right}.dsr-rng span{color:var(--muted)}
+.dsr-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.dsr-row>.mu{min-width:84px;font-size:12.5px}
+.dsr-chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;font:inherit;font-size:13px;cursor:pointer}
+.dsr-chip:hover{border-color:var(--pri)}.dsr-chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.dsr-act{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:10px;border-top:1px dashed var(--line)}
+.dsr-tag{border:0;background:var(--pri-t);color:var(--pri);border-radius:8px;padding:4px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}.dsr-tag:hover{filter:brightness(.95)}
+@media (max-width:980px){.dsr-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.dsr{padding:14px}.dsr-g{grid-template-columns:1fr}.dsr-row>.mu{min-width:0;width:100%}.dsr-row .seg{flex-wrap:wrap;overflow:visible;border-radius:14px}}
+/* ตัวเลขหลักล้านไม่ล้นกรอบ */
+.rp-st{min-width:0}.rp-st b{font-size:clamp(17px,4.6vw,22px);overflow-wrap:anywhere}
+.rp-grand b{font-size:clamp(18px,5vw,22px);overflow-wrap:anywhere}.rp-sum{white-space:nowrap}
+@media (max-width:760px){.rp-st.rp-money{flex:1 1 100%;order:-1}.rp-st{flex:1 1 40%}.rp-st.rp-prog{flex:1 1 100%}.rp-hero{padding:18px 16px}.rp-sh{gap:8px 10px}.rp-sum{flex:1 1 100%;text-align:right}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -1219,11 +1236,18 @@ const fdl = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); r
 const dAgencies = () => { const ex = [...new Set(S.d.docs.map(d => d.agency).filter(a => a && !DAG.includes(a)))].sort((a, b) => a.localeCompare(b, 'th')); return DAG.concat(ex); };
 // รอส่งคืนกี่วัน (นับจากวันที่เรื่องกลับ)
 const dWaitPill = d => { if (d.status !== 'approved' || !d.result_date) return ''; const n = -days(d.result_date); if (n < 1) return ''; return '<span class="pill ' + (n > 14 ? 'due-bad' : n > 7 ? 'due-soon' : 'due-ok') + '">รอส่งคืน ' + n + ' วัน</span>'; };
-const DF = () => { S.docF = S.docF || { q: '', ag: '', st: '', mo: '', sel: [] }; return S.docF; };
+const DF = () => { S.docF = S.docF || { q: '', ag: '', kd: '', st: '', mo: '', amin: '', amax: '', sel: [] }; return S.docF; };
+// กลุ่มประเภทเรื่อง (เลือกทีเดียวได้หลายประเภท)
+const KGRP = { g_approve: ['กลุ่มอนุมัติ (ทุกแบบ)', ['approve', 'pay', 'approve_pay', 'approve_sign']], g_sign: ['กลุ่มลงนาม (ทุกแบบ)', ['approve_sign', 'sign', 'info_sign']], g_info: ['กลุ่มเพื่อทราบ (ทุกแบบ)', ['info', 'info_sign']] };
+const kindHit = (d, kd) => !kd || (KGRP[kd] ? KGRP[kd][1].includes(d.kind) : d.kind === kd);
+const numOf = v => { const t = String(v == null ? '' : v).replace(/,/g, '').trim(); return t === '' || isNaN(+t) ? null : +t; };
+// ช่วงจำนวนเงินสำเร็จรูป [ป้าย, ตั้งแต่, ถึง]
+const APRE = [['ไม่ระบุเงิน', 'none', 'none'], ['ไม่เกิน 1 แสน', '', '100000'], ['1 แสน – 1 ล้าน', '100000', '1000000'], ['เกิน 1 ล้าน', '1000000', '']];
 function docRows() {
-  const f = DF(), q = f.q.trim();
-  return S.d.docs.filter(d => (!f.ag || d.agency === f.ag) && (!f.st || d.status === f.st) &&
+  const f = DF(), q = f.q.trim(), noAmt = f.amin === 'none', lo = noAmt ? null : numOf(f.amin), hi = noAmt ? null : numOf(f.amax);
+  return S.d.docs.filter(d => (!f.ag || d.agency === f.ag) && kindHit(d, f.kd) && (!f.st || d.status === f.st) &&
     (!f.mo || String(d.result_date || d.return_date || '').slice(0, 7) === f.mo) &&
+    (noAmt ? d.amount == null : (lo == null || (d.amount != null && +d.amount >= lo)) && (hi == null || (d.amount != null && +d.amount <= hi))) &&
     (!q || [d.doc_no, d.agency, d.subject, d.party, d.note].some(v => String(v || '').includes(q)) || String(d.amount || '').includes(q.replace(/,/g, ''))))
     .sort((a, b) => String(b.result_date || '').localeCompare(String(a.result_date || '')) || String(b.created_at).localeCompare(String(a.created_at)));
 }
@@ -1235,11 +1259,22 @@ V.docs = () => {
 function docList() {
   const f = DF(), all = S.d.docs, rows = docRows(), selN = f.sel.length;
   const months = [...new Set(all.map(d => String(d.result_date || d.return_date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
-  const fr = '<div class="frow"><input class="f search" id="dq" placeholder="ค้นหาเลขที่หนังสือ / เรื่อง / หน่วยงาน / ผู้รับ / จำนวนเงิน…" value="' + esc(f.q) + '" oninput="TD.docQ(this.value)">' +
-    '<select class="f" onchange="TD.docFilt({ag:this.value})"><option value="">ทุกหน่วยงาน</option>' + dAgencies().map(a => '<option' + (f.ag === a ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select>' +
-    '<select class="f" onchange="TD.docFilt({mo:this.value})"><option value="">ทุกเดือน</option>' + months.map(m => '<option value="' + m + '"' + (f.mo === m ? ' selected' : '') + '>' + TMF[+m.slice(5, 7) - 1] + ' ' + (+m.slice(0, 4) + 543) + '</option>').join('') + '</select>' +
-    '<div class="seg">' + DST_ORDER.map(s => '<button class="' + (f.st === s ? 'on' : '') + '" onclick="TD.docFilt({st:\'' + (f.st === s ? '' : s) + '\'})" title="กดซ้ำเพื่อดูทั้งหมด">' + DST[s][0] + ' ' + all.filter(d => d.status === s).length + '</button>').join('') + '</div>' +
-    (f.q || f.ag || f.mo || f.st ? '<button class="btn sm ghost" onclick="TD.docClr()">ล้างตัวกรอง</button>' : '') + '</div>';
+  const kOpts = '<option value="">ทุกประเภท</option><optgroup label="เลือกเป็นกลุ่ม">' + Object.keys(KGRP).map(k => '<option value="' + k + '"' + (f.kd === k ? ' selected' : '') + '>' + KGRP[k][0] + '</option>').join('') + '</optgroup><optgroup label="ระบุประเภท">' + Object.keys(DKIND).map(k => '<option value="' + k + '"' + (f.kd === k ? ' selected' : '') + '>' + DKIND[k] + '</option>').join('') + '</optgroup>';
+  const amtV = v => v === 'none' || v === '' || v == null ? '' : dMoney(v), preOn = p => f.amin === p[1] && f.amax === p[2];
+  const chips = [f.q && ['q', 'คำค้น "' + f.q + '"'], f.ag && ['ag', 'หน่วยงาน: ' + f.ag], f.kd && ['kd', 'ประเภท: ' + (KGRP[f.kd] ? KGRP[f.kd][0] : DKIND[f.kd])], f.st && ['st', 'สถานะ: ' + DST[f.st][0]], f.mo && ['mo', 'เดือน: ' + TMF[+f.mo.slice(5, 7) - 1] + ' ' + (+f.mo.slice(0, 4) + 543)],
+    f.amin === 'none' ? ['amt', 'ไม่ระบุจำนวนเงิน'] : (f.amin || f.amax) && ['amt', 'จำนวนเงิน ' + (f.amin ? dMoney(f.amin) : '0') + ' – ' + (f.amax ? dMoney(f.amax) : 'ไม่จำกัด')]].filter(Boolean);
+  const fr = '<div class="card dsr">' +
+    '<div class="dsr-q"><span class="dsr-ic">🔍</span><input class="f" id="dq" placeholder="คำค้น: เลขที่หนังสือ / เรื่อง / ผู้รับ / หมายเหตุ…" value="' + esc(f.q) + '" oninput="TD.docQ(this.value)" autocomplete="off"></div>' +
+    '<div class="dsr-g">' +
+      '<label class="fld">หน่วยงาน<select class="f" onchange="TD.docFilt({ag:this.value})"><option value="">ทุกหน่วยงาน</option>' + dAgencies().map(a => '<option' + (f.ag === a ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
+      '<label class="fld">ประเภทเรื่อง<select class="f" onchange="TD.docFilt({kd:this.value})">' + kOpts + '</select></label>' +
+      '<label class="fld">เดือน (วันที่เรื่องกลับ)<select class="f" onchange="TD.docFilt({mo:this.value})"><option value="">ทุกเดือน</option>' + months.map(m => '<option value="' + m + '"' + (f.mo === m ? ' selected' : '') + '>' + TMF[+m.slice(5, 7) - 1] + ' ' + (+m.slice(0, 4) + 543) + '</option>').join('') + '</select></label>' +
+      '<div class="fld dsr-amt">จำนวนเงิน (บาท)<div class="dsr-rng"><input class="f" id="d_amin" inputmode="decimal" placeholder="ตั้งแต่" value="' + amtV(f.amin) + '" oninput="TD.amtIn(this);TD.docAmt()" onblur="TD.amtFmt(this)"><span>–</span><input class="f" id="d_amax" inputmode="decimal" placeholder="ถึง" value="' + amtV(f.amax) + '" oninput="TD.amtIn(this);TD.docAmt()" onblur="TD.amtFmt(this)"></div></div>' +
+    '</div>' +
+    '<div class="dsr-row"><span class="mu">ช่วงเงินด่วน</span>' + APRE.map(p => '<button class="dsr-chip' + (preOn(p) ? ' on' : '') + '" onclick="TD.docFilt(' + (preOn(p) ? '{amin:\'\',amax:\'\'}' : '{amin:\'' + p[1] + '\',amax:\'' + p[2] + '\'}') + ')">' + p[0] + '</button>').join('') + '</div>' +
+    '<div class="dsr-row"><span class="mu">สถานะ</span><div class="seg">' + DST_ORDER.map(st => '<button class="' + (f.st === st ? 'on' : '') + '" onclick="TD.docFilt({st:\'' + (f.st === st ? '' : st) + '\'})" title="กดซ้ำเพื่อดูทั้งหมด">' + DST[st][0] + ' ' + all.filter(d => d.status === st).length + '</button>').join('') + '</div></div>' +
+    (chips.length ? '<div class="dsr-act"><span class="mu">กำลังกรอง:</span>' + chips.map(c => '<button class="dsr-tag" onclick="TD.docUnf(\'' + c[0] + '\')" title="เอาเงื่อนไขนี้ออก">' + esc(c[1]) + ' ✕</button>').join('') + '<button class="btn sm ghost" onclick="TD.docClr()">ล้างทั้งหมด</button></div>' : '') +
+    '</div>';
   const bar = selN ? '<div class="card" style="padding:12px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center"><b>เลือก ' + selN + ' เรื่อง</b><span class="mu">วันที่</span><label class="fld" style="width:170px;flex:none">' + dateInp('d_bulk', today()) + '</label>' +
     '<button class="btn pri" onclick="TD.docBulk(\'returned\')">บันทึกส่งคืนหน่วยงาน</button><button class="btn" onclick="TD.docBulk(\'approved\')">บันทึกวันที่เรื่องกลับ</button><button class="btn ghost" onclick="TD.docSelClr()">ยกเลิกการเลือก</button></div>' : '';
   const ids = rows.map(d => d.id), allOn = ids.length && ids.every(i => f.sel.includes(i));
@@ -1265,7 +1300,7 @@ function docReport() {
     '<div class="seg">' + [['color', 'การ์ดสี'], ['table', 'ตารางแบบ Excel']].map(x => '<button class="' + (R.mode === x[0] ? 'on' : '') + '" onclick="TD.docRep({mode:\'' + x[0] + '\'})">' + x[1] + '</button>').join('') + '</div>' +
     '<label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox"' + (R.st ? ' checked' : '') + ' onchange="TD.docRep({st:this.checked})"> แสดงสถานะ / วันที่ส่งคืนหน่วยงาน</label></div>';
   const hero = '<div class="rp-hero"><div class="rp-hl"><div class="rp-ey">รายงานแผนกสารบรรณ · สรุปเรื่องอนุมัติ</div><div class="rp-ttl">ณ วันที่ ' + (R.date === 'none' ? '—' : fdl(R.date)) + '</div><div class="rp-sub">' + items.length + ' เรื่อง จาก ' + ags.length + ' หน่วยงาน</div></div>' +
-    '<div class="rp-stats"><div class="rp-st"><span>จำนวนเรื่อง</span><b>' + items.length + '</b></div><div class="rp-st"><span>ยอดเงินรวม (บาท)</span><b>' + dMoney(tot) + '</b></div><div class="rp-st"><span>หน่วยงาน</span><b>' + ags.length + '</b></div>' +
+    '<div class="rp-stats"><div class="rp-st"><span>จำนวนเรื่อง</span><b>' + items.length + '</b></div><div class="rp-st rp-money"><span>ยอดเงินรวม (บาท)</span><b>' + dMoney(tot) + '</b></div><div class="rp-st"><span>หน่วยงาน</span><b>' + ags.length + '</b></div>' +
     '<div class="rp-st rp-prog"><span>ส่งคืนหน่วยงานแล้ว</span><b>' + nRet + ' <small>/ ' + items.length + '</small></b><i><em style="width:' + pct + '%"></em></i><small>' + (nWait ? 'รอส่งคืน ' + nWait + ' เรื่อง' : items.length ? 'ส่งคืนครบแล้ว ✓' : '') + '</small></div></div></div>';
   if (!items.length) return bar + hero + '<div class="card rp-empty"><div class="rp-empty-ic">📭</div><b>ยังไม่มีเรื่องกลับในวันที่นี้</b><div class="mu">กด "+ บันทึกเรื่องกลับ" ด้านบน แล้วกรอกวันที่เรื่องกลับ รายงานจะสรุปให้อัตโนมัติ</div></div>';
   if (R.mode === 'table') {
@@ -1343,6 +1378,9 @@ function expDocs() {
 }
 const DOCS_API = {
   docTab: v => { S.docTab = v; render(); }, docFilt: o => { Object.assign(DF(), o, { sel: [] }); S.docTab = 'list'; render(); }, docClr: () => { S.docF = null; render(); },
+  // กรองตามจำนวนเงินระหว่างพิมพ์ (หน่วง 0.4 วิ) · วาดใหม่แล้วคืนเคอร์เซอร์ให้ช่องที่กำลังพิมพ์อยู่
+  docAmt: () => { clearTimeout(S._amtT); S._amtT = setTimeout(() => { const lo = numOf(val('d_amin')), hi = numOf(val('d_amax')), f = DF(); const nmin = lo == null ? '' : String(lo), nmax = hi == null ? '' : String(hi); if (f.amin === nmin && f.amax === nmax) return; const ae = document.activeElement, id = ae && ae.id, txt = ae && ae.value, pos = ae && ae.selectionStart; Object.assign(f, { amin: nmin, amax: nmax, sel: [] }); render(true); if (id === 'd_amin' || id === 'd_amax') { const e = $(id); if (e) { e.value = txt; e.focus(); try { e.setSelectionRange(pos, pos); } catch (x) {} } } }, 400); },
+  docUnf: k => { const f = DF(); if (k === 'amt') { f.amin = ''; f.amax = ''; } else f[k] = ''; f.sel = []; render(); },
   docQ: v => { DF().q = v; const pos = $('dq').selectionStart; render(true); const e = $('dq'); if (e) { e.focus(); e.setSelectionRange(pos, pos); } },
   docSel: id => { const s = DF().sel, i = s.indexOf(id); i < 0 ? s.push(id) : s.splice(i, 1); render(true); }, docSelAll: on => { DF().sel = on ? docRows().map(d => d.id) : []; render(true); }, docSelClr: () => { DF().sel = []; render(true); },
   docRep: o => { S.docRep = Object.assign(S.docRep || {}, o); render(true); },
