@@ -7,7 +7,7 @@ window.TD_CONFIG = {
   OFFICE_NAME: "สำนักงานสนับสนุนมูลนิธิและโครงการ",
   // ต้องตรงกับฟังก์ชัน td_email() ใน schema.sql
   EMAIL_DOMAIN: "teamdesk.local"
-  ADVANCE_URL: "https://script.google.com/macros/s/รหัสเว็บแอปเงินยืม/exec"
+  ADVANCE_URL: "https://script.google.com/macros/s/AKfycbwBEd896VhoXl-DTRXiqFlzZIy2bDFSjIbUlqiuOwTOIOcL-rMEiMOwqJ-yTjVecj6XIA/exec"
 };
 
 /* Desk Suite · เชื่อมแอปในชุด (แท็บจองรถ การ์ดสถานะรถ และแผ่นสลับแอป) */
