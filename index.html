@@ -377,6 +377,7 @@ table.t tr.rp-alt td{background:var(--surface-2)}table.t tr.rp-tot td{background
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="desk-suite.js" defer></script>
+<script src="advance-link.js" defer></script>
 </head>
 <body>
 <div id="app"><div class="gate"><div class="box"><div class="mu">กำลังโหลด…</div></div></div></div>
@@ -507,6 +508,12 @@ async function gate(mode, err) {
     start();
   };
 }
+// แจ้งระบบอื่นในชุด (เช่น ระบบเงินยืมทดรองจ่าย) ว่าใครเข้าใช้อยู่ และสังกัดกองไหน
+function publishUser() {
+  const v = S.me ? (divBy(S.me.division_id) || divBy((deptBy(S.me.dept_id) || {}).division_id)) : null;
+  window.DESK_USER = S.me ? { name: S.me.full_name || S.me.nickname, division: v ? v.name : '', role: S.me.role } : null;
+  try { window.dispatchEvent(new Event('desk-user')); } catch (e) {}
+}
 async function start() {
   const { data } = await sb.auth.getSession(); const ses = data && data.session;
   if (!ses) return gate('login');
@@ -514,6 +521,7 @@ async function start() {
   S.me = (me || [])[0] || null;
   if (!S.me || !S.me.active) { await sb.auth.signOut(); return gate('login', 'บัญชีนี้ยังไม่ได้ผูกกับแผนกหรือถูกปิดใช้งาน ติดต่อผู้ดูแลระบบ'); }
   await Promise.all([loadAll(), rmLoad()]);
+  publishUser();
   const sc = orderedDepts(scopeDepts());
   if (!sc.some(d => d.id === S.dept)) S.dept = (sc[0] || {}).id || null;
   if (isLeader()) S.view = 'org';
@@ -1613,7 +1621,7 @@ Object.assign(window.TD, DOCS_API, RM_API);
 const _open = openTask; window.TD.openTask = id => { if (S.dlg) S.dlg.editing = false; _open(id); };
 
 if (!CF.SUPABASE_URL || !CF.SUPABASE_ANON_KEY) { $('app').innerHTML = '<div class="gate"><div class="box"><div class="glogo">' + ico('logo') + '</div><h1>Team Desk</h1><div class="err">ไม่พบ config.js หรือยังไม่ได้ใส่ SUPABASE_URL / SUPABASE_ANON_KEY</div></div></div>'; return; }
-sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { S.me = null; gate('login'); } });
+sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { S.me = null; publishUser(); gate('login'); } });
 start();
 })();
 </script>
