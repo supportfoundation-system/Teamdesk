@@ -2,7 +2,7 @@
  * advance-link.js — เชื่อมระบบเงินยืมทดรองจ่าย (Apps Script) เข้ากับ Team Desk และ HR Desk
  * ----------------------------------------------------------------------------------------
  *  • เพิ่มเมนู "เงินยืมทดรองจ่าย" ในแถบเมนูซ้าย (หมวด ระบบงานสำนักงาน) ใช้หน้าตาเดียวกับเมนูของระบบนั้น
- *  • กดแล้วเปิดระบบเงินยืมในพื้นที่ทางขวา (ไม่ต้องสลับแท็บ) · มือถือเปิดเต็มจอ มีปุ่มย้อนกลับ
+ *  • กดแล้วเปิดระบบเงินยืมเต็มจอ แบบเดียวกับระบบจองรถ (แถบบน: ‹ กลับ · ชื่อระบบ · เปิดแยก ↗)
  *  • มือถือมีปุ่มลอย "เงินยืม" มุมขวาล่าง
  *  • ตัวเลขแดงบนเมนู = รายการของกองผู้ใช้ที่เกินกำหนด/ใกล้ครบกำหนด (อัปเดตทุก 10 นาที)
  *  • ส่งชื่อและกองของผู้ใช้ไปให้ระบบเงินยืม → เข้าระบบอัตโนมัติ เห็นเฉพาะกองตัวเอง
@@ -46,21 +46,25 @@
     const st = document.createElement('style');
     st.id = 'adv-css';
     st.textContent = [
-      '#advPanel{position:fixed;top:0;right:0;bottom:0;left:var(--adv-left,0);z-index:65;display:none;flex-direction:column;background:#f3f5f9;box-shadow:-8px 0 30px rgba(10,20,40,.12)}',
-      '#advPanel.show{display:flex;animation:advIn .2s ease}',
-      '@keyframes advIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}',
-      '.adv-bar{display:flex;align-items:center;gap:10px;height:54px;padding:0 10px 0 14px;background:#0b1f3a;color:#fff;font-family:inherit;flex:none}',
-      '.adv-bar .adv-ic{width:32px;height:32px;border-radius:9px;background:linear-gradient(140deg,#e7c55a,#a9861c);color:#0b1f3a;display:flex;align-items:center;justify-content:center;flex:none}',
-      '.adv-bar .adv-t{flex:1;min-width:0;line-height:1.25}.adv-bar .adv-t b{display:block;font-size:15px}',
-      '.adv-bar .adv-t small{display:block;font-size:12px;color:#b9c8de;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.adv-bar a,.adv-bar button{min-width:40px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}',
-      '.adv-bar a:hover,.adv-bar button:hover{background:rgba(255,255,255,.16)}',
+      '#advPanel{position:fixed;inset:0;z-index:200;display:none;flex-direction:column;background:#f3f5f9}',
+      '#advPanel.show{display:flex;animation:advIn .22s cubic-bezier(.2,.8,.2,1)}',
+      '@keyframes advIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}',
+      '.adv-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:56px;padding:0 18px;background:#fff;border-bottom:1px solid #e6e9f0;box-shadow:0 1px 3px rgba(16,24,40,.05);font-family:inherit;flex:none}',
+      '.adv-back{justify-self:start;display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:#6d28d9;font:inherit;font-size:15px;font-weight:600;cursor:pointer;padding:8px 10px;margin-left:-10px;border-radius:10px}',
+      '.adv-back:hover{background:#f3efff}.adv-back svg{width:18px;height:18px}',
+      '.adv-mid{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:15.5px;color:#0b1f3a;min-width:0}',
+      '.adv-mid .adv-ic{width:30px;height:30px;border-radius:9px;background:linear-gradient(140deg,#e7c55a,#a9861c);color:#0b1f3a;display:flex;align-items:center;justify-content:center;flex:none}',
+      '.adv-mid .adv-ic svg{width:17px;height:17px}',
+      '.adv-mid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.adv-new{justify-self:end;color:#6d28d9;font-size:14px;font-weight:600;text-decoration:none;padding:8px 10px;margin-right:-10px;border-radius:10px;white-space:nowrap}',
+      '.adv-new:hover{background:#f3efff}',
       '#advPanel iframe{flex:1;width:100%;border:0;background:#f3f5f9}',
+      'html.adv-lock,html.adv-lock body{overflow:hidden}',
       '.adv-cnt{margin-left:auto;font-size:11.5px;font-weight:700;background:#e11d48;color:#fff;border-radius:999px;padding:1px 8px;min-width:22px;text-align:center}',
       '.adv-cnt.soon{background:#d97706}.adv-cnt[hidden]{display:none}',
       '#advFab{position:fixed;right:16px;bottom:calc(var(--tabbar-h,64px) + 24px + env(safe-area-inset-bottom));z-index:45;display:none;align-items:center;gap:8px;height:50px;padding:0 18px 0 14px;border:0;border-radius:999px;background:linear-gradient(135deg,#173f74,#0b1f3a);color:#fff;font:inherit;font-weight:600;font-size:14px;box-shadow:0 10px 26px rgba(11,31,58,.4);cursor:pointer}',
       '#advFab .adv-cnt{margin-left:2px;border:2px solid #fff}',
-      '@media (max-width:' + MOBILE + 'px){#advFab{display:inline-flex}#advPanel{left:0;z-index:80}.adv-bar{padding-top:env(safe-area-inset-top);height:calc(54px + env(safe-area-inset-top))}.adv-hide-m{display:none!important}}',
+      '@media (max-width:' + MOBILE + 'px){#advFab{display:inline-flex}.adv-bar{padding:env(safe-area-inset-top) 12px 0;height:calc(52px + env(safe-area-inset-top))}.adv-mid{font-size:14.5px}.adv-back span{display:none}}',
       '@media print{#advPanel,#advFab{display:none!important}}'
     ].join('\n');
     document.head.appendChild(st);
@@ -109,31 +113,30 @@
     p.id = 'advPanel';
     p.setAttribute('role', 'dialog');
     p.setAttribute('aria-label', 'ระบบ' + APP_NAME);
-    p.innerHTML = '<div class="adv-bar"><button type="button" data-adv="close" aria-label="ปิด">✕</button><span class="adv-ic">' + ICON + '</span><span class="adv-t"><b>' + APP_NAME + '</b><small id="advWho"></small></span>' +
-      '<a class="adv-hide-m" id="advNew" href="#" target="_blank" rel="noopener">เปิดในแท็บใหม่ ↗</a></div><iframe id="advFrame" title="ระบบ' + APP_NAME + '" loading="lazy" referrerpolicy="no-referrer"></iframe>';
+    const home = fromApp() === 'hrdesk' ? 'HR Desk' : 'Team Desk';
+    p.innerHTML = '<div class="adv-bar"><button type="button" class="adv-back" data-adv="close" aria-label="กลับ ' + home + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>' + home + '</span></button>' +
+      '<div class="adv-mid"><span class="adv-ic">' + ICON + '</span><span>' + APP_NAME + '</span></div>' +
+      '<a class="adv-new" id="advNew" href="#" target="_blank" rel="noopener">เปิดแยก ↗</a></div><iframe id="advFrame" title="ระบบ' + APP_NAME + '" referrerpolicy="no-referrer"></iframe>';
     p.querySelector('[data-adv="close"]').addEventListener('click', close);
     document.body.appendChild(p);
     return p;
   }
-  function placePanel() {
-    const side = document.querySelector('aside.side');
-    const left = !isMobile() && side ? Math.max(0, side.getBoundingClientRect().right) : 0;
-    document.documentElement.style.setProperty('--adv-left', left + 'px');
-  }
+  function placePanel() { /* เปิดเต็มจอแบบเดียวกับระบบจองรถ */ }
   function open() {
     if (!baseUrl()) return;
     const p = panel(), u = user() || {}, src = appUrl();
-    document.getElementById('advWho').textContent = [u.name, u.division || cfg().ADVANCE_DIV].filter(Boolean).join(' · ') || 'เลือกกองเมื่อเข้าระบบครั้งแรก';
     document.getElementById('advNew').href = src;
     if (state.src !== src) { document.getElementById('advFrame').src = src; state.src = src; }
     placePanel();
     p.classList.add('show');
+    document.documentElement.classList.add('adv-lock');
     state.open = true;
     markActive();
   }
   function close() {
     const p = document.getElementById('advPanel');
     if (p) p.classList.remove('show');
+    document.documentElement.classList.remove('adv-lock');
     state.open = false;
     markActive();
     refreshBadge();
