@@ -9,7 +9,7 @@ window.TD_CONFIG = {
   EMAIL_DOMAIN: "teamdesk.local"
 };
 
-/* Desk Suite · เชื่อมแอปในชุด (แท็บจองรถ การ์ดสถานะรถ และแผ่นสลับแอป) */
+/* Desk Suite · เชื่อมแอปในชุด (แท็บจองรถ การ์ดสถานะรถ แผ่นสลับแอป และระบบเงินยืมทดรองจ่าย) */
 window.DESK_SUITE = {
   APP: "team",
   // ลิงก์เว็บแอประบบจองรถ (Apps Script) รูปแบบ https://script.google.com/macros/s/…/exec
@@ -17,5 +17,7 @@ window.DESK_SUITE = {
   // ลิงก์ HR Desk (เว้นว่างได้ ถ้าว่างจะไม่แสดงในแผ่นสลับแอป)
   HR_DESK_URL: "",
   // "inapp" = เปิดระบบจองรถเต็มจอในแอป · "newtab" = เปิดแท็บใหม่
-  CAR_OPEN: "inapp"
+  CAR_OPEN: "inapp",
+  // ลิงก์เว็บแอประบบเงินยืมทดรองจ่าย (Apps Script) — วางลิงก์ที่ลงท้ายด้วย /exec แทนข้อความในเครื่องหมายคำพูด
+  ADVANCE_URL: "https://script.google.com/macros/s/AKfycbwBEd896VhoXl-DTRXiqFlzZIy2bDFSjIbUlqiuOwTOIOcL-rMEiMOwqJ-yTjVecj6XIA/exec"
 };
