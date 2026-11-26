@@ -4,6 +4,7 @@
  *  ระบบในเมนู (เพิ่มในแถบเมนูซ้าย หมวด ระบบงานสำนักงาน ใช้หน้าตาเดียวกับเมนูของระบบนั้น)
  *   1) เงินยืมทดรองจ่าย  — ส่งชื่อและกองของผู้ใช้ไปให้ → เข้าระบบอัตโนมัติ · ตัวเลขแดง = เกิน/ใกล้ครบกำหนด
  *   2) ใบคุมต้นขั้วเช็ค
+ *   3) ครัวหมุนเวียน — เฉพาะผู้ที่ระบบต้นทางอนุญาต (DESK_USER.apps.kitchen = true)
  *  • กดแล้วเปิดเต็มจอ แบบเดียวกับระบบจองรถ (แถบบน: ‹ กลับ · ชื่อระบบ · เปิดแยก ↗)
  *  • มือถือมีปุ่มลอย "ระบบงาน" มุมขวาล่าง กดแล้วเลือกระบบ
  *
@@ -13,6 +14,8 @@
  *     ADVANCE_DIV: "",                                            // (HR Desk) กองของแผนกบุคคลฯ
  *     CHECK_URL:   "https://script.google.com/macros/s/…/exec",   // ระบบใบคุมต้นขั้วเช็ค (ไม่ใส่ = ใช้ค่าเริ่มต้น)
  *     CHECK_OPEN:  "inapp"                                        // "newtab" = เปิดแท็บใหม่แทน
+ *     KITCHEN_URL: "https://script.google.com/macros/s/…/exec",   // ระบบครัวหมุนเวียน (ไม่ใส่ = ใช้ค่าเริ่มต้น)
+ *     KITCHEN_OPEN: "inapp"
  *   });
  *
  * ระบบต้นทางต้องบอกว่าใครเข้าใช้อยู่ หลังล็อกอินสำเร็จ:
@@ -21,6 +24,7 @@
  */
 (function () {
   'use strict';
+  const DEFAULT_KITCHEN_URL = 'https://script.google.com/macros/s/AKfycbz0xAWiwCxCXk0VpAjPeGBUCOqqanR-bUMIZJmClEfC8NQZEYNVI5AP7Uxr7r6WylTF/exec';
   const DEFAULT_CHECK_URL = 'https://script.google.com/macros/s/AKfycbznnWnVRrYqZKHPOht7871GKJ1XziqJcTD93vXCdpM55YSLzLe_hwRq4ETPq15Nrc-uhg/exec';
   const MOBILE = 860;
   const cfg = () => window.DESK_SUITE || {};
@@ -53,10 +57,19 @@
       base: () => pick('CHECK_URL') || DEFAULT_CHECK_URL,
       url() { return this.base(); },
       newTab: () => pick('CHECK_OPEN') === 'newtab'
+    },
+    {
+      key: 'kit', name: 'ครัวหมุนเวียน', short: 'ครัว', badge: false,
+      icon: SVG('<path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/><path d="M2 11h20M8 7c0-1.5 1-1.5 1-3M12 7c0-1.5 1-1.5 1-3M16 7c0-1.5 1-1.5 1-3"/>'),
+      tint: 'linear-gradient(140deg,#fdba74,#c2410c)',
+      base: () => pick('KITCHEN_URL') || DEFAULT_KITCHEN_URL,
+      url() { return this.base(); },
+      newTab: () => pick('KITCHEN_OPEN') === 'newtab',
+      allowed: () => !!((user() || {}).apps || {}).kitchen
     }
   ];
-  const live = () => APPS.filter(a => a.base());
-  const state = { open: null, src: {}, badge: null };
+  const live = () => APPS.filter(a => a.base() && (!a.allowed || a.allowed()));
+  const state = { open: null, src: {}, badge: null, sig: '' };
 
   /* ---------- สไตล์ ---------- */
   function css() {
@@ -236,10 +249,15 @@
       const p = document.getElementById('advPanel'); if (p) p.remove();
       return;
     }
+    const sig = live().map(a => a.key).join(',');
+    if (state.sig !== sig) {
+      ['advNav', 'advFab', 'advSheet'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+      state.sig = sig;
+    }
     injectNav(); injectFab();
   }
   function boot() {
-    if (!live().length) return;
+    if (!APPS.some(a => a.base())) return;
     sync();
     const app = document.getElementById('app') || document.body;
     new MutationObserver(() => { if (user() && !document.getElementById('advNav')) injectNav(); }).observe(app, { childList: true, subtree: true });

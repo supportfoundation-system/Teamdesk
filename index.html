@@ -387,7 +387,7 @@ table.t tr.rp-alt td{background:var(--surface-2)}table.t tr.rp-tot td{background
 (function () {
 'use strict';
 const CF = window.TD_CONFIG || {};
-const sb = window.supabase.createClient(CF.SUPABASE_URL, CF.SUPABASE_ANON_KEY);
+const sb = (() => { try { return window.supabase.createClient(CF.SUPABASE_URL, CF.SUPABASE_ANON_KEY); } catch (e) { console.error('Team Desk: config.js ไม่ถูกต้อง', e); return null; } })();
 const DOMAIN = CF.EMAIL_DOMAIN || 'teamdesk.local';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -511,7 +511,10 @@ async function gate(mode, err) {
 // แจ้งระบบอื่นในชุด (เช่น ระบบเงินยืมทดรองจ่าย) ว่าใครเข้าใช้อยู่ และสังกัดกองไหน
 function publishUser() {
   const v = S.me ? (divBy(S.me.division_id) || divBy((deptBy(S.me.dept_id) || {}).division_id)) : null;
-  window.DESK_USER = S.me ? { name: S.me.full_name || S.me.nickname, division: v ? v.name : '', role: S.me.role } : null;
+  // เมนูครัวหมุนเวียน: เฉพาะแผนกแผนงานและติดตามผล + หัวหน้ากองของแผนกนี้ + หัวหน้าสำนักงาน/ผู้ดูแลระบบ
+  const kd = S.me ? S.d.depts.find(d => String(d.name || '').replace(/\s+/g, '').indexOf('แผนงานและติดตามผล') >= 0) : null;
+  const kitchen = !!S.me && !!kd && (isTop() || (isDiv() && !!kd.division_id && S.me.division_id === kd.division_id) || S.me.dept_id === kd.id);
+  window.DESK_USER = S.me ? { name: S.me.full_name || S.me.nickname, division: v ? v.name : '', role: S.me.role, apps: { kitchen: kitchen } } : null;
   try { window.dispatchEvent(new Event('desk-user')); } catch (e) {}
 }
 async function start() {
@@ -1620,7 +1623,7 @@ Object.assign(window.TD, DOCS_API, RM_API);
 // ปุ่มยกเลิกในหน้าแก้ไขงาน → กลับไปหน้ารายละเอียดงาน
 const _open = openTask; window.TD.openTask = id => { if (S.dlg) S.dlg.editing = false; _open(id); };
 
-if (!CF.SUPABASE_URL || !CF.SUPABASE_ANON_KEY) { $('app').innerHTML = '<div class="gate"><div class="box"><div class="glogo">' + ico('logo') + '</div><h1>Team Desk</h1><div class="err">ไม่พบ config.js หรือยังไม่ได้ใส่ SUPABASE_URL / SUPABASE_ANON_KEY</div></div></div>'; return; }
+if (!sb || !CF.SUPABASE_URL || !CF.SUPABASE_ANON_KEY) { $('app').innerHTML = '<div class="gate"><div class="box"><div class="glogo">' + ico('logo') + '</div><h1>Team Desk</h1><div class="err">config.js ไม่ถูกต้อง หรือยังไม่ได้ใส่ SUPABASE_URL / SUPABASE_ANON_KEY — ตรวจเครื่องหมาย , และ " ในไฟล์ config.js</div></div></div>'; return; }
 sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { S.me = null; publishUser(); gate('login'); } });
 start();
 })();
