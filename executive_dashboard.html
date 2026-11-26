@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a5fa8">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  });
+}
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แดชบอร์ดผู้บริหาร — HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --primary:#1a5fa8; --accent:#0f4a8a; --navy:#0f172a;
+    --ok:#16a34a; --warn:#d97706; --info:#0891b2; --bad:#dc2626; --violet:#7c3aed;
+    --gray-50:#f8fafc; --gray-100:#f1f5f9; --gray-200:#e2e8f0;
+    --gray-500:#64748b; --gray-700:#334155; --gray-900:#0f172a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',Arial,sans-serif}
+  body{background:linear-gradient(180deg,#0f172a 0%,#0f172a 220px,#f1f5f9 220px);color:var(--gray-900)}
+  .topbar{position:fixed;top:0;left:0;right:0;height:60px;background:rgba(15,23,42,.85);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;padding:0 28px;z-index:1000}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .logo-img{height:38px;width:auto;object-fit:contain;border-radius:6px;background:#fff;padding:2px}
+  .system-title{font-size:15px;font-weight:700;color:#fff}
+  .topbar-divider{color:rgba(255,255,255,.3)}
+  .current-time{font-size:13px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+  .topbar-right{display:flex;align-items:center;gap:16px}
+  .user-role{font-size:13px;font-weight:700;color:#0f172a;background:linear-gradient(135deg,#fbbf24,#f59e0b);padding:5px 14px;border-radius:20px;letter-spacing:.3px}
+  .user-name{font-size:14px;font-weight:500;color:#fff}
+  .btn-logout{background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 14px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  .btn-logout:hover{background:rgba(255,255,255,.1)}
+
+  .main{padding:100px 32px 50px;max-width:1440px;margin:0 auto}
+  .hero{margin-bottom:28px}
+  .hero h1{font-size:30px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-.3px}
+  .hero p{color:rgba(255,255,255,.6);font-size:14.5px}
+
+  h2{font-size:16px;margin-bottom:14px;color:var(--gray-900);font-weight:700}
+  h3.section-title{font-size:19px;font-weight:800;margin:40px 0 16px;color:var(--gray-900);display:flex;align-items:center;gap:10px}
+  h3.section-title .bar{width:5px;height:22px;border-radius:3px;background:linear-gradient(180deg,var(--primary),var(--violet))}
+
+  .toolbar{display:flex;gap:20px;align-items:center;margin-bottom:24px;flex-wrap:wrap;background:#fff;padding:14px 18px;border-radius:14px;box-shadow:0 4px 20px rgba(15,23,42,.06)}
+  .toolbar-group{display:flex;align-items:center;gap:8px}
+  .toolbar select{padding:9px 14px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-family:'Sarabun',sans-serif;background:#fff;min-width:150px;font-weight:600;color:var(--gray-900)}
+  .toolbar label{font-size:13px;font-weight:700;color:var(--gray-500)}
+
+  .card{background:#fff;border-radius:16px;padding:22px 26px;box-shadow:0 4px 20px rgba(15,23,42,.06);margin-bottom:20px}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:8px}
+  .kpi-box{background:#fff;border-radius:16px;padding:20px 22px;box-shadow:0 4px 20px rgba(15,23,42,.06);position:relative;overflow:hidden}
+  .kpi-box::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--kc,var(--primary))}
+  .kpi-icon{font-size:22px;margin-bottom:8px}
+  .kpi-label{font-size:12.5px;color:var(--gray-500);margin-bottom:4px;font-weight:600}
+  .kpi-value{font-size:26px;font-weight:800;color:var(--gray-900);line-height:1.1}
+  .kpi-unit{font-size:11.5px;color:var(--gray-500);margin-top:4px}
+  .kpi-sub{font-size:11.5px;margin-top:6px;font-weight:700}
+  .kpi-sub.up{color:var(--ok)}
+  .kpi-sub.down{color:var(--bad)}
+
+  .charts-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px}
+  @media (max-width:900px){.charts-grid{grid-template-columns:1fr}}
+  .chart-wrap{position:relative;height:320px}
+  .chart-wrap.tall{height:380px}
+
+  table.data-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .data-table th{text-align:left;padding:10px 12px;background:var(--gray-50);font-size:11.5px;color:var(--gray-500);font-weight:700;border-bottom:2px solid var(--gray-200);white-space:nowrap}
+  .data-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);white-space:nowrap}
+  .data-table tfoot td{font-weight:800;background:var(--gray-50)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .table-scroll{overflow-x:auto}
+
+  .no-access{text-align:center;padding:80px 20px;color:var(--gray-500)}
+  .no-access .icon{font-size:44px;margin-bottom:14px}
+  .loading-state{text-align:center;padding:40px;color:var(--gray-500)}
+  .badge-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
+@media (max-width:640px){.current-time{display:none}.user-role{padding:4px 8px;font-size:12px}}
+
+@media (max-width:640px){
+  body{font-size:14px}
+  table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .card,.container,.wrap{padding:14px!important}
+  h1{font-size:19px}
+  h2{font-size:17px}
+}
+
+  /* ---------- กระดิ่งแจ้งเตือน (เพิ่มโดย Claude) ---------- */
+  .ntf-wrap{position:relative;display:inline-flex;align-items:center}
+  .ntf-bell-btn{position:relative;background:none;border:none;cursor:pointer;font-size:20px;padding:6px;line-height:1;border-radius:50%;transition:background .15s}
+  .ntf-bell-btn:hover{background:#f1f5f9}
+  .ntf-badge{position:absolute;top:-2px;right:-2px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1;box-shadow:0 0 0 2px #fff}
+  .ntf-badge.show{display:flex}
+  .ntf-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:360px;max-width:88vw;max-height:70vh;overflow-y:auto;background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.18);z-index:5000;border:1px solid #e2e8f0}
+  .ntf-panel.open{display:block}
+  .ntf-panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff}
+  .ntf-panel-header strong{font-size:14px;color:#1e293b}
+  .ntf-mark-all{background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer;font-family:inherit}
+  .ntf-mark-all:hover{text-decoration:underline}
+  .ntf-item{display:block;width:100%;text-align:left;padding:11px 14px;border:none;background:none;border-bottom:1px solid #f8fafc;cursor:pointer;font-family:inherit}
+  .ntf-item:hover{background:#f8fafc}
+  .ntf-item.unread{background:#eff6ff}
+  .ntf-item.unread:hover{background:#dbeafe}
+  .ntf-item-title{font-size:13px;color:#1e293b;font-weight:600;display:flex;align-items:center;gap:6px}
+  .ntf-dot{width:7px;height:7px;border-radius:50%;background:#2563eb;flex-shrink:0}
+  .ntf-item-msg{font-size:12.5px;color:#64748b;margin-top:3px;line-height:1.4}
+  .ntf-item-time{font-size:10.5px;color:#94a3b8;margin-top:4px}
+  .ntf-empty{padding:40px 20px;text-align:center;color:#94a3b8;font-size:13px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <img src="https://sydijbrkbfvjrcxhfrlo.supabase.co/storage/v1/object/public/Logo/LOGO.jpg" alt="โลโก้" class="logo-img">
+    <div class="system-title">HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</div>
+    <div class="topbar-divider">|</div>
+    <div class="current-time" id="live-clock">กำลังโหลด...</div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-role">👑 ผู้บริหาร</div>
+    <div class="user-name" id="topbar-user-name"></div>
+    <div class="ntf-wrap">
+      <button class="ntf-bell-btn" onclick="ntfToggle(event)" aria-label="การแจ้งเตือน">🔔<span class="ntf-badge" id="ntfBadge">0</span></button>
+      <div class="ntf-panel" id="ntfPanel">
+        <div class="ntf-panel-header"><strong>🔔 การแจ้งเตือน</strong><button class="ntf-mark-all" onclick="ntfMarkAllRead()">ทำเครื่องหมายว่าอ่านแล้วทั้งหมด</button></div>
+        <div id="ntfList"><div class="ntf-empty">กำลังโหลด...</div></div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="handleLogout()">ออกจากระบบ ⟳</button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="noAccessView" style="display:none">
+    <div class="card no-access">
+      <div class="icon">🔒</div>
+      <p>หน้านี้สำหรับผู้บริหารเท่านั้น</p>
+    </div>
+  </div>
+
+  <div id="dashboardView" style="display:none">
+    <div class="hero">
+      <h1>📊 ภาพรวมองค์กร</h1>
+      <p>สรุปสถิติกำลังคนและงบประมาณบุคลากรทั้งมูลนิธิ — อัปเดตล่าสุดแบบเรียลไทม์</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <label>ปี (พ.ศ.)</label>
+        <select id="yearSelect" onchange="onFilterChange()"></select>
+      </div>
+      <div class="toolbar-group">
+        <label>หน่วยงาน</label>
+        <select id="deptFilterSelect" onchange="onFilterChange()"><option value="">— ทุกหน่วยงาน —</option></select>
+      </div>
+      <div class="toolbar-group">
+        <label>หมวดงบประมาณ (เจาะจง)</label>
+        <select id="categorySelect" onchange="onFilterChange()"><option value="">— ภาพรวมทุกหมวด —</option></select>
+      </div>
+    </div>
+
+    <!-- ========== กำลังคน ========== -->
+    <h3 class="section-title"><span class="bar"></span>👥 กำลังคน — อัตรากำลัง / บรรจุ / ลาออก / เลิกจ้าง / เกษียณ / เสียชีวิต</h3>
+
+    <div class="kpi-grid">
+      <div class="kpi-box" style="--kc:#1a5fa8"><div class="kpi-icon">👥</div><div class="kpi-label">เจ้าหน้าที่ทั้งหมด (ปัจจุบัน)</div><div class="kpi-value" id="kpiHeadcount">-</div><div class="kpi-unit">คน</div></div>
+      <div class="kpi-box" style="--kc:#16a34a"><div class="kpi-icon">🆕</div><div class="kpi-label">บรรจุใหม่ (ปีที่เลือก)</div><div class="kpi-value" id="kpiHired">-</div><div class="kpi-unit">คน</div></div>
+      <div class="kpi-box" style="--kc:#d97706"><div class="kpi-icon">🚪</div><div class="kpi-label">ลาออก / เลิกจ้าง (ปีที่เลือก)</div><div class="kpi-value" id="kpiResigned">-</div><div class="kpi-unit">คน</div></div>
+      <div class="kpi-box" style="--kc:#0891b2"><div class="kpi-icon">🎖️</div><div class="kpi-label">เกษียณอายุ (ปีที่เลือก)</div><div class="kpi-value" id="kpiRetired">-</div><div class="kpi-unit">คน</div></div>
+      <div class="kpi-box" style="--kc:#64748b"><div class="kpi-icon">🕯️</div><div class="kpi-label">เสียชีวิต (ปีที่เลือก)</div><div class="kpi-value" id="kpiDeceased">-</div><div class="kpi-unit">คน</div></div>
+    </div>
+
+    <div class="charts-grid" style="margin-top:20px">
+      <div class="card">
+        <h2>แนวโน้มรายเดือน — บรรจุ / ลาออก / เกษียณ / เสียชีวิต</h2>
+        <div class="chart-wrap"><canvas id="workforceTrendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>สัดส่วนเจ้าหน้าที่ตามประเภท</h2>
+        <div class="chart-wrap"><canvas id="staffTypeChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>อัตรากำลังปัจจุบัน แยกตามหน่วยงาน</h2>
+      <div class="chart-wrap tall"><canvas id="headcountDeptChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="table-scroll" id="workforceTableWrap"><div class="loading-state">กำลังโหลด...</div></div>
+    </div>
+
+    <!-- ========== งบประมาณ ========== -->
+    <h3 class="section-title"><span class="bar"></span>💰 งบประมาณบุคลากร</h3>
+
+    <div class="kpi-grid">
+      <div class="kpi-box" style="--kc:#1a5fa8"><div class="kpi-icon">💰</div><div class="kpi-label">รวมรายรับ (เงินเดือน+ค่าตอบแทน)</div><div class="kpi-value" id="sumEarning">-</div><div class="kpi-unit">บาท</div></div>
+      <div class="kpi-box" style="--kc:#dc2626"><div class="kpi-icon">📉</div><div class="kpi-label">รวมรายการหัก</div><div class="kpi-value" id="sumDeduction">-</div><div class="kpi-unit">บาท</div></div>
+      <div class="kpi-box" style="--kc:#0891b2"><div class="kpi-icon">🎖️</div><div class="kpi-label">รวมสวัสดิการ</div><div class="kpi-value" id="sumWelfare">-</div><div class="kpi-unit">บาท</div></div>
+      <div class="kpi-box" style="--kc:#16a34a"><div class="kpi-icon">🧾</div><div class="kpi-label">รวมงบประมาณทั้งหมด</div><div class="kpi-value" id="sumTotal">-</div><div class="kpi-unit">บาท</div></div>
+      <div class="kpi-box" style="--kc:#7c3aed"><div class="kpi-icon">✅</div><div class="kpi-label">ยอดสุทธิ (หลังหัก)</div><div class="kpi-value" id="sumNet">-</div><div class="kpi-unit">บาท</div></div>
+    </div>
+
+    <div class="charts-grid" style="margin-top:20px">
+      <div class="card">
+        <h2 id="trendTitle">แนวโน้มรายเดือน</h2>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2 id="pieTitle">สัดส่วน</h2>
+        <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 id="deptChartTitle">ยอดจ่ายแยกตามหน่วยงาน</h2>
+      <div class="chart-wrap tall"><canvas id="deptChart"></canvas></div>
+    </div>
+
+    <h3 class="section-title"><span class="bar"></span>📋 รายละเอียด x หน่วยงาน</h3>
+    <div class="card"><h2>รายรับ</h2><div class="table-scroll" id="earningTableWrap"><div class="loading-state">กำลังโหลด...</div></div></div>
+    <div class="card"><h2>รายการหัก</h2><div class="table-scroll" id="deductionTableWrap"><div class="loading-state">กำลังโหลด...</div></div></div>
+    <div class="card"><h2>สวัสดิการ</h2><div class="table-scroll" id="welfareTableWrap"><div class="loading-state">กำลังโหลด...</div></div></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://sydijbrkbfvjrcxhfrlo.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5ZGlqYnJrYmZ2anJjeGhmcmxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTEwMTQsImV4cCI6MjA5ODI4NzAxNH0.vm6s9R6Lig8DKz41rRfBnvaXqu4QdoH0MGx0BS77ZRA';
+const{createClient}=supabase;const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentUser=null,currentProfile=null;
+let trendChartInst=null,pieChartInst=null,deptChartInst=null,workforceTrendInst=null,staffTypeInst=null,headcountDeptInst=null;
+let allRows=[],allStaff=[];
+
+const CAT_LABEL={
+  base_salary:'เงินเดือนพื้นฐาน', wage:'ค่าจ้าง/ค่าตอบแทน (ที่ปรึกษา)', ot_pay:'ค่าล่วงเวลา (OT)',
+  per_diem:'ค่าเบี้ยเลี้ยง', travel_fee:'ค่าเดินทาง', phochokho:'เงินเพิ่ม พ.ช.ก.',
+  backpay:'เงินตกเบิก', commission:'ค่าคอมมิชชั่น', profession_fee:'ค่าวิชาชีพ',
+  academic_service_fee:'ค่าบริการวิชาการ', leave_refund:'คืนเงินวันลา',
+  tax_withheld:'ภาษีหัก ณ ที่จ่าย', social_security:'ประกันสังคม', leave_deduct:'หักเงินลา',
+  other_deduct:'หักอื่นๆ', gsf_deduct:'หักเงินกู้ กยศ.',
+  gratuity:'เงินบำเหน็จ', funeral:'เงินช่วยเหลือฌาปนกิจ'
+};
+const GROUP_LABEL={earning:'รายรับ',deduction:'รายการหัก',welfare:'สวัสดิการ'};
+const GROUP_COLOR={earning:'#1a5fa8',deduction:'#dc2626',welfare:'#0891b2'};
+const EARNING_KEYS=['base_salary','wage','ot_pay','per_diem','travel_fee','phochokho','backpay','commission','profession_fee','academic_service_fee','leave_refund'];
+const DEDUCTION_KEYS=['tax_withheld','social_security','leave_deduct','other_deduct','gsf_deduct'];
+const WELFARE_KEYS=['gratuity','funeral'];
+const PALETTE=['#1a5fa8','#0891b2','#16a34a','#d97706','#dc2626','#7c3aed','#0f766e','#be185d','#65a30d','#4338ca','#0369a1','#b45309','#065f46','#9d174d'];
+const STAFF_TYPE_LABEL={1:'เจ้าหน้าที่มูลนิธิ',2:'ทดลองปฏิบัติงาน',3:'ลูกจ้างชั่วคราว',4:'ที่ปรึกษา/ผู้เชี่ยวชาญ'};
+const MONTH_LABEL=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function money(n){return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});}
+function startLiveClock(){function t(){const n=new Date();const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];const mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];document.getElementById('live-clock').innerText='วัน'+days[n.getDay()]+'ที่ '+n.getDate()+' '+mn[n.getMonth()]+' '+(n.getFullYear()+543)+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0')+' น.';}setInterval(t,1000);t();}
+async function handleLogout(){await sb.auth.signOut();window.location.href='login.html';}
+
+async function authGuard(){
+  const{data}=await sb.auth.getSession();
+  if(!data.session){window.location.href='login.html';return false;}
+  currentUser=data.session.user;
+  const{data:p,error}=await sb.from('profiles').select('display_name,role').eq('id',currentUser.id).single();
+  if(error||!p||(p.role!=='executive'&&p.role!=='super')){document.getElementById('noAccessView').style.display='block';return false;}
+  currentProfile=p;
+  document.getElementById('topbar-user-name').innerText=currentProfile.display_name||currentUser.email;
+  document.getElementById('dashboardView').style.display='block';
+  return true;
+}
+
+function initCategorySelect(){
+  const sel=document.getElementById('categorySelect');
+  const groups=[['earning','รายรับ',EARNING_KEYS],['deduction','รายการหัก',DEDUCTION_KEYS],['welfare','สวัสดิการ',WELFARE_KEYS]];
+  groups.forEach(g=>{
+    const og=document.createElement('optgroup');og.label=g[1];
+    g[2].forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=CAT_LABEL[k];og.appendChild(o);});
+    sel.appendChild(og);
+  });
+}
+
+async function loadYears(){
+  const{data,error}=await sb.from('budget_financial_detail').select('year_be').order('year_be',{ascending:false});
+  const nowBE=new Date().getFullYear()+543;
+  let years=[...new Set((data||[]).map(r=>r.year_be))].sort((a,b)=>b-a);
+  if(error||!years.length)years=[nowBE];
+  if(!years.includes(nowBE))years.unshift(nowBE);
+  document.getElementById('yearSelect').innerHTML=years.map(y=>`<option value="${y}">พ.ศ. ${y}</option>`).join('');
+}
+
+async function loadDepartmentOptions(){
+  const{data}=await sb.from('staff').select('department');
+  const uniq=[...new Set((data||[]).map(r=>r.department).filter(Boolean))].sort();
+  const sel=document.getElementById('deptFilterSelect');
+  uniq.forEach(d=>sel.appendChild(new Option(d,d)));
+}
+
+function onFilterChange(){loadDashboard();}
+
+async function loadDashboard(){
+  const year=document.getElementById('yearSelect').value;
+  if(!year)return;
+  await Promise.all([loadBudgetData(year),loadWorkforceData(year)]);
+}
+
+async function fetchAllBudgetRows(year){
+  // ดึงแบบแบ่งหน้าเอง เพราะ Supabase จำกัดผลลัพธ์สูงสุด 1,000 แถวต่อคำขอเป็นค่าเริ่มต้น
+  const PAGE=1000;let all=[],from=0;
+  while(true){
+    const{data,error}=await sb.from('budget_financial_detail').select('*').eq('year_be',year).range(from,from+PAGE-1);
+    if(error)return{data:null,error};
+    all=all.concat(data||[]);
+    if(!data||data.length<PAGE)break;
+    from+=PAGE;
+  }
+  return{data:all,error:null};
+}
+
+// ===================== งบประมาณ =====================
+async function loadBudgetData(year){
+  const{data,error}=await fetchAllBudgetRows(year);
+  if(error){document.getElementById('earningTableWrap').innerHTML='<div class="loading-state">โหลดข้อมูลไม่สำเร็จ: '+esc(error.message)+(error.message.includes('does not exist')?' — ต้องมีตาราง budget_financial_detail ก่อน':'')+'</div>';return;}
+  allRows=data||[];
+  const deptFilter=document.getElementById('deptFilterSelect').value;
+  if(deptFilter)allRows=allRows.filter(r=>r.department===deptFilter);
+  renderSummaryCards();
+  const cat=document.getElementById('categorySelect').value;
+  if(cat)renderDrilldown(cat);else renderOverview();
+  renderGroupTable('earning',EARNING_KEYS,'earningTableWrap');
+  renderGroupTable('deduction',DEDUCTION_KEYS,'deductionTableWrap');
+  renderGroupTable('welfare',WELFARE_KEYS,'welfareTableWrap');
+}
+
+function sumBy(rows,filterFn){return rows.filter(filterFn).reduce((s,r)=>s+Number(r.amount||0),0);}
+
+function renderSummaryCards(){
+  const earning=sumBy(allRows,r=>r.group_type==='earning');
+  const deduction=sumBy(allRows,r=>r.group_type==='deduction');
+  const welfare=sumBy(allRows,r=>r.group_type==='welfare');
+  document.getElementById('sumEarning').textContent=money(earning);
+  document.getElementById('sumDeduction').textContent=money(deduction);
+  document.getElementById('sumWelfare').textContent=money(welfare);
+  document.getElementById('sumTotal').textContent=money(earning+welfare);
+  document.getElementById('sumNet').textContent=money(earning+welfare-deduction);
+}
+
+function renderOverview(){
+  document.getElementById('trendTitle').textContent='แนวโน้มรายเดือน (รายรับ / รายการหัก / สวัสดิการ)';
+  document.getElementById('pieTitle').textContent='สัดส่วนรายรับ / รายการหัก / สวัสดิการ';
+  document.getElementById('deptChartTitle').textContent='รายรับแยกตามหน่วยงาน (แยกหมวดย่อย)';
+
+  const months=Array.from({length:12},(_,i)=>i+1);
+  const groups=['earning','deduction','welfare'];
+  const trendDatasets=groups.map(g=>({label:GROUP_LABEL[g],borderColor:GROUP_COLOR[g],backgroundColor:GROUP_COLOR[g]+'33',tension:.35,fill:true,data:months.map(m=>sumBy(allRows,r=>r.group_type===g&&Number(r.month)===m))}));
+  drawTrendChart(MONTH_LABEL,trendDatasets);
+
+  const totals=groups.map(g=>sumBy(allRows,r=>r.group_type===g));
+  drawPieChart(groups.map(g=>GROUP_LABEL[g]),totals,groups.map(g=>GROUP_COLOR[g]));
+
+  const depts=[...new Set(allRows.map(r=>r.department||'ไม่ระบุ'))].sort();
+  const deptDatasets=EARNING_KEYS.map((k,i)=>({label:CAT_LABEL[k],backgroundColor:PALETTE[i%PALETTE.length],data:depts.map(d=>sumBy(allRows,r=>r.category===k&&(r.department||'ไม่ระบุ')===d))}));
+  drawDeptChart(depts,deptDatasets,true);
+}
+
+function renderDrilldown(cat){
+  const group=EARNING_KEYS.indexOf(cat)>=0?'earning':(DEDUCTION_KEYS.indexOf(cat)>=0?'deduction':'welfare');
+  document.getElementById('trendTitle').textContent='แนวโน้มรายเดือน: '+CAT_LABEL[cat];
+  document.getElementById('pieTitle').textContent='สัดส่วนตามหน่วยงาน: '+CAT_LABEL[cat];
+  document.getElementById('deptChartTitle').textContent='ยอดแยกตามหน่วยงาน: '+CAT_LABEL[cat];
+
+  const months=Array.from({length:12},(_,i)=>i+1);
+  const data=months.map(m=>sumBy(allRows,r=>r.category===cat&&Number(r.month)===m));
+  drawTrendChart(MONTH_LABEL,[{label:CAT_LABEL[cat],borderColor:GROUP_COLOR[group],backgroundColor:GROUP_COLOR[group]+'33',tension:.35,fill:true,data}]);
+
+  const depts=[...new Set(allRows.map(r=>r.department||'ไม่ระบุ'))].sort();
+  const deptAmounts=depts.map(d=>sumBy(allRows,r=>r.category===cat&&(r.department||'ไม่ระบุ')===d));
+  drawPieChart(depts,deptAmounts,depts.map((_,i)=>PALETTE[i%PALETTE.length]));
+  drawDeptChart(depts,[{label:CAT_LABEL[cat],backgroundColor:GROUP_COLOR[group],data:deptAmounts}],false);
+}
+
+function drawTrendChart(labels,datasets){
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  if(trendChartInst)trendChartInst.destroy();
+  trendChartInst=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{ticks:{callback:v=>money(v)}}}}});
+}
+function drawPieChart(labels,data,colors){
+  const ctx=document.getElementById('pieChart').getContext('2d');
+  if(pieChartInst)pieChartInst.destroy();
+  pieChartInst=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+function drawDeptChart(depts,datasets,stacked){
+  const ctx=document.getElementById('deptChart').getContext('2d');
+  if(deptChartInst)deptChartInst.destroy();
+  deptChartInst=new Chart(ctx,{type:'bar',data:{labels:depts,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{stacked},y:{stacked,ticks:{callback:v=>money(v)}}}}});
+}
+
+function renderGroupTable(groupType,keys,wrapId){
+  const depts=[...new Set(allRows.filter(r=>r.group_type===groupType).map(r=>r.department||'ไม่ระบุ'))].sort();
+  const wrap=document.getElementById(wrapId);
+  if(!depts.length){wrap.innerHTML='<div class="loading-state">ไม่มีข้อมูลในหมวดนี้</div>';return;}
+  let html='<table class="data-table"><thead><tr><th>หมวด</th>'+depts.map(d=>`<th class="num">${esc(d)}</th>`).join('')+'<th class="num">รวม</th></tr></thead><tbody>';
+  const colTotals=depts.map(()=>0);let grand=0;
+  keys.forEach(k=>{
+    const rowVals=depts.map(d=>sumBy(allRows,r=>r.category===k&&(r.department||'ไม่ระบุ')===d));
+    const rowTotal=rowVals.reduce((a,b)=>a+b,0);
+    rowVals.forEach((v,i)=>colTotals[i]+=v);grand+=rowTotal;
+    html+=`<tr><td>${esc(CAT_LABEL[k])}</td>${rowVals.map(v=>`<td class="num">${money(v)}</td>`).join('')}<td class="num">${money(rowTotal)}</td></tr>`;
+  });
+  html+=`</tbody><tfoot><tr><td>รวมทั้งหมด</td>${colTotals.map(v=>`<td class="num">${money(v)}</td>`).join('')}<td class="num">${money(grand)}</td></tr></tfoot></table>`;
+  wrap.innerHTML=html;
+}
+
+// ===================== กำลังคน =====================
+const STATUS_LABEL_EX={active:'ปกติ',inactive:'ไม่ใช้งาน',resigned:'ลาออก',retired:'เกษียณ',deceased:'เสียชีวิต',terminated:'เลิกจ้าง'};
+
+async function loadWorkforceData(year){
+  const{data,error}=await sb.from('staff').select('id,department,staff_type,status,start_date,resignation_date');
+  if(error){document.getElementById('workforceTableWrap').innerHTML='<div class="loading-state">โหลดข้อมูลไม่สำเร็จ: '+esc(error.message)+'</div>';return;}
+  allStaff=data||[];
+  const deptFilter=document.getElementById('deptFilterSelect').value;
+  const staffInScope=deptFilter?allStaff.filter(s=>s.department===deptFilter):allStaff;
+
+  const yearCE=Number(year)-543;
+  const yStart=`${yearCE}-01-01`,yEnd=`${yearCE}-12-31`;
+
+  const activeStaff=staffInScope.filter(s=>s.status==='active');
+  const hired=staffInScope.filter(s=>s.start_date&&s.start_date>=yStart&&s.start_date<=yEnd);
+  const resigned=staffInScope.filter(s=>(s.status==='resigned'||s.status==='terminated')&&s.resignation_date&&s.resignation_date>=yStart&&s.resignation_date<=yEnd);
+  const retired=staffInScope.filter(s=>s.status==='retired'&&s.resignation_date&&s.resignation_date>=yStart&&s.resignation_date<=yEnd);
+  const deceased=staffInScope.filter(s=>s.status==='deceased'&&s.resignation_date&&s.resignation_date>=yStart&&s.resignation_date<=yEnd);
+
+  document.getElementById('kpiHeadcount').textContent=activeStaff.length.toLocaleString();
+  document.getElementById('kpiHired').textContent=hired.length.toLocaleString();
+  document.getElementById('kpiResigned').textContent=resigned.length.toLocaleString();
+  document.getElementById('kpiRetired').textContent=retired.length.toLocaleString();
+  document.getElementById('kpiDeceased').textContent=deceased.length.toLocaleString();
+
+  // แนวโน้มรายเดือน
+  const months=Array.from({length:12},(_,i)=>i+1);
+  const countByMonth=(rows,dateField)=>months.map(m=>rows.filter(r=>{const d=r[dateField];if(!d)return false;const mm=Number(d.slice(5,7));return mm===m;}).length);
+  drawWorkforceTrend(MONTH_LABEL,[
+    {label:'บรรจุ',borderColor:'#16a34a',backgroundColor:'#16a34a22',tension:.35,data:countByMonth(hired,'start_date')},
+    {label:'ลาออก/เลิกจ้าง',borderColor:'#d97706',backgroundColor:'#d9770622',tension:.35,data:countByMonth(resigned,'resignation_date')},
+    {label:'เกษียณ',borderColor:'#0891b2',backgroundColor:'#0891b222',tension:.35,data:countByMonth(retired,'resignation_date')},
+    {label:'เสียชีวิต',borderColor:'#64748b',backgroundColor:'#64748b22',tension:.35,data:countByMonth(deceased,'resignation_date')},
+  ]);
+
+  // สัดส่วนตามประเภท
+  const types=[1,2,3,4];
+  const typeCounts=types.map(t=>activeStaff.filter(s=>Number(s.staff_type)===t).length);
+  drawStaffTypeChart(types.map(t=>STAFF_TYPE_LABEL[t]),typeCounts,['#1a5fa8','#0891b2','#d97706','#7c3aed']);
+
+  // อัตรากำลังตามหน่วยงาน
+  const depts=[...new Set(staffInScope.map(s=>s.department||'ไม่ระบุ'))].sort();
+  const deptCounts=depts.map(d=>activeStaff.filter(s=>(s.department||'ไม่ระบุ')===d).length);
+  drawHeadcountDeptChart(depts,deptCounts);
+
+  // ตารางสรุป
+  let html='<table class="data-table"><thead><tr><th>หน่วยงาน</th><th class="num">อัตรากำลังปัจจุบัน</th><th class="num">บรรจุ (ปีนี้)</th><th class="num">ลาออก/เลิกจ้าง (ปีนี้)</th><th class="num">เกษียณ (ปีนี้)</th><th class="num">เสียชีวิต (ปีนี้)</th></tr></thead><tbody>';
+  depts.forEach(d=>{
+    html+=`<tr><td>${esc(d)}</td>
+      <td class="num">${activeStaff.filter(s=>(s.department||'ไม่ระบุ')===d).length}</td>
+      <td class="num">${hired.filter(s=>(s.department||'ไม่ระบุ')===d).length}</td>
+      <td class="num">${resigned.filter(s=>(s.department||'ไม่ระบุ')===d).length}</td>
+      <td class="num">${retired.filter(s=>(s.department||'ไม่ระบุ')===d).length}</td>
+      <td class="num">${deceased.filter(s=>(s.department||'ไม่ระบุ')===d).length}</td></tr>`;
+  });
+  html+=`</tbody><tfoot><tr><td>รวมทั้งหมด</td><td class="num">${activeStaff.length}</td><td class="num">${hired.length}</td><td class="num">${resigned.length}</td><td class="num">${retired.length}</td><td class="num">${deceased.length}</td></tr></tfoot></table>`;
+  document.getElementById('workforceTableWrap').innerHTML=html;
+}
+
+function drawWorkforceTrend(labels,datasets){
+  const ctx=document.getElementById('workforceTrendChart').getContext('2d');
+  if(workforceTrendInst)workforceTrendInst.destroy();
+  workforceTrendInst=new Chart(ctx,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+}
+function drawStaffTypeChart(labels,data,colors){
+  const ctx=document.getElementById('staffTypeChart').getContext('2d');
+  if(staffTypeInst)staffTypeInst.destroy();
+  staffTypeInst=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+function drawHeadcountDeptChart(labels,data){
+  const ctx=document.getElementById('headcountDeptChart').getContext('2d');
+  if(headcountDeptInst)headcountDeptInst.destroy();
+  headcountDeptInst=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'จำนวนเจ้าหน้าที่ (คน)',backgroundColor:'#1a5fa8',data}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{stepSize:1}}}}});
+}
+
+(async function init(){
+  startLiveClock();
+  const ok=await authGuard();
+  if(!ok)return;
+  initCategorySelect();
+  await loadYears();
+  await loadDepartmentOptions();
+  await loadDashboard();
+})();
+
+// ============================================================
+// กระดิ่งแจ้งเตือนรวมศูนย์ (เพิ่มโดย Claude)
+// ทำงานแบบอิสระ ไม่พึ่งชื่อตัวแปรของแต่ละหน้า (เพราะแต่ละไฟล์ตั้งชื่อตัวแปร currentUser/currentProfile ไม่ตรงกัน
+// บางไฟล์ถึงกับไม่มีตัวแปรเหล่านี้เลย เช่น dashboard.html) — ดึง session/role/department ของตัวเองโดยตรง
+// ============================================================
+let ntfUser = null, ntfRole = null, ntfDept = null, ntfList = [], ntfChannel = null;
+
+function ntfSb() {
+  if (typeof sb !== 'undefined' && sb) return sb;
+  if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+  return null;
+}
+
+async function ntfWaitForAuth() {
+  const client = ntfSb();
+  if (!client) { setTimeout(ntfWaitForAuth, 400); return; }
+  try {
+    const { data } = await client.auth.getSession();
+    if (!data || !data.session) { setTimeout(ntfWaitForAuth, 400); return; }
+    ntfUser = data.session.user;
+    const { data: profile } = await client.from('profiles').select('role,department').eq('id', ntfUser.id).maybeSingle();
+    if (profile) { ntfRole = profile.role; ntfDept = profile.department; }
+  } catch (e) { setTimeout(ntfWaitForAuth, 800); return; }
+  ntfInit();
+}
+
+async function ntfInit() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  await ntfLoad();
+  if (ntfChannel) return; // กันสมัคร realtime ซ้ำ
+  ntfChannel = client.channel('ntf-bell-' + ntfUser.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .subscribe();
+  setInterval(ntfLoad, 60000); // รีเฟรชสำรองทุก 1 นาที เผื่อ realtime หลุดหรือพลาดไป
+}
+
+async function ntfLoad() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  // ระบบเดิมเคยใช้ชื่อคอลัมน์ recipient_department/recipient_user_id มาก่อน ส่วนที่เพิ่มใหม่ใช้ department/recipient_id
+  // ดึงแบบครอบคลุมทั้ง 2 แบบไว้ก่อน แล้วค่อยกรองซ้ำอีกทีฝั่ง JS ให้แม่นยำ
+  const orParts = [`recipient_id.eq.${ntfUser.id}`, `recipient_user_id.eq.${ntfUser.id}`];
+  if (ntfRole) orParts.push(`recipient_role.eq.${ntfRole}`);
+  if (ntfDept) orParts.push(`recipient_department.eq.${encodeURIComponent(ntfDept)}`);
+  const { data, error } = await client.from('notifications').select('*').or(orParts.join(',')).order('created_at', { ascending: false }).limit(40);
+  if (error) return; // เงียบไว้ ไม่รบกวนผู้ใช้ถ้าตารางยังไม่พร้อม (เช่น ยังไม่ได้รัน migration)
+  ntfList = (data || []).filter(n => {
+    if (n.recipient_id === ntfUser.id || n.recipient_user_id === ntfUser.id) return true;
+    const scopedDept = n.department || n.recipient_department || null;
+    if (n.recipient_role) {
+      if (n.recipient_role !== ntfRole) return false;
+      if (scopedDept && ntfRole !== 'super' && scopedDept !== ntfDept) return false;
+      return true;
+    }
+    if (scopedDept && (ntfRole === 'unit' || ntfRole === 'super')) {
+      return ntfRole === 'super' || scopedDept === ntfDept;
+    }
+    return false;
+  });
+  ntfRenderBadge();
+  if (document.getElementById('ntfPanel')?.classList.contains('open')) ntfRenderList();
+}
+
+function ntfRenderBadge() {
+  const unread = ntfList.filter(n => !n.is_read).length;
+  document.querySelectorAll('.ntf-badge').forEach(b => {
+    b.textContent = unread > 99 ? '99+' : unread;
+    b.classList.toggle('show', unread > 0);
+  });
+}
+
+function ntfTimeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'เมื่อสักครู่';
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ชั่วโมงที่แล้ว`;
+  const d = Math.floor(hr / 24);
+  if (d < 7) return `${d} วันที่แล้ว`;
+  return new Date(iso).toLocaleDateString('th-TH');
+}
+
+function ntfEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+function ntfRenderList() {
+  const wrap = document.getElementById('ntfList');
+  if (!wrap) return;
+  if (!ntfList.length) { wrap.innerHTML = '<div class="ntf-empty">📭 ไม่มีการแจ้งเตือน</div>'; return; }
+  wrap.innerHTML = ntfList.slice(0, 30).map(n => `
+    <button class="ntf-item ${n.is_read ? '' : 'unread'}" onclick="ntfClickItem('${n.id}', ${n.link ? `'${ntfEsc(n.link)}'` : 'null'})">
+      <div class="ntf-item-title">${n.is_read ? '' : '<span class="ntf-dot"></span>'}${ntfEsc(n.title || 'แจ้งเตือน')}</div>
+      <div class="ntf-item-msg">${ntfEsc(n.message || '')}</div>
+      <div class="ntf-item-time">${ntfTimeAgo(n.created_at)}</div>
+    </button>
+  `).join('');
+}
+
+function ntfToggle(e) {
+  e && e.stopPropagation();
+  const panel = document.getElementById('ntfPanel');
+  if (!panel) return;
+  const willOpen = !panel.classList.contains('open');
+  document.querySelectorAll('.ntf-panel.open').forEach(p => p.classList.remove('open'));
+  if (willOpen) { panel.classList.add('open'); ntfRenderList(); }
+}
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('ntfPanel');
+  if (panel && panel.classList.contains('open') && !e.target.closest('.ntf-wrap')) panel.classList.remove('open');
+});
+
+async function ntfClickItem(id, link) {
+  const client = ntfSb();
+  const item = ntfList.find(n => n.id === id);
+  if (item && !item.is_read && client) {
+    item.is_read = true;
+    await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
+    ntfRenderBadge();
+  }
+  if (link) window.location.href = link;
+}
+
+async function ntfMarkAllRead() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  const unreadIds = ntfList.filter(n => !n.is_read).map(n => n.id);
+  if (!unreadIds.length) return;
+  ntfList.forEach(n => n.is_read = true);
+  ntfRenderBadge(); ntfRenderList();
+  await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', unreadIds);
+}
+
+ntfWaitForAuth();
+</script>
+
+</body>
+</html>

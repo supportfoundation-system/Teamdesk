@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a5fa8">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  });
+}
+</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ข้อมูลส่วนตัว — HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',Arial,sans-serif}
+    body{background:#f4f6f9;color:#333;min-height:100vh;overflow:hidden;height:100vh}
+    .topbar{position:fixed;top:0;left:0;right:0;height:60px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;padding:0 24px;z-index:1000}
+    .topbar-left{display:flex;align-items:center;gap:12px}
+    .logo-img{height:40px;width:auto;object-fit:contain}
+    .system-title{font-size:16px;font-weight:700;color:#2c3e50}
+    .topbar-divider{color:#ccc}
+    .current-time{font-size:14px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+    .topbar-right{display:flex;align-items:center;gap:16px}
+    .user-role{font-size:14px;font-weight:600;color:#7c3aed;background:#ede9fe;padding:4px 12px;border-radius:4px}
+    .user-name{font-size:14px;font-weight:500}
+    .btn-logout{background:#fff;border:1px solid #dc3545;color:#dc3545;padding:5px 12px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+    .btn-logout:hover{background:#dc3545;color:#fff}
+    .app-container{display:flex;padding-top:60px;height:100vh}
+    .sidebar{width:240px;background:#1e293b;color:#f8fafc;height:calc(100vh - 60px);overflow-y:auto;padding:20px 0;flex-shrink:0}
+    .menu-category{font-size:12px;font-weight:700;text-transform:uppercase;color:#64748b;padding:12px 24px 6px;letter-spacing:.5px}
+    .menu-item{display:flex;align-items:center;padding:10px 24px;color:#cbd5e1;text-decoration:none;font-size:14px;border-left:4px solid transparent;cursor:pointer}
+    .menu-item:hover,.menu-item.active{background:#334155;color:#fff;border-left-color:#7c3aed}
+    .menu-item span{margin-right:10px;font-size:16px}
+    .main-content{flex-grow:1;overflow-y:auto;padding:24px 24px 40px}
+    .main-content>*{max-width:1200px;margin-left:auto;margin-right:auto}
+    .hamburger-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;border:none;background:none;cursor:pointer;font-size:22px;color:#334155;flex-shrink:0;margin-right:2px}
+    .sidebar-backdrop{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:998}
+    .sidebar-close-btn{display:none}
+    @media (max-width:1024px){
+      .hamburger-btn{display:flex}
+      .sidebar{position:fixed;top:60px;left:0;bottom:0;height:calc(100vh - 60px);transform:translateX(-100%);transition:transform .25s ease;z-index:999;box-shadow:4px 0 20px rgba(0,0,0,.15)}
+      .sidebar.open{transform:translateX(0)}
+      .sidebar-backdrop.show{display:block}
+      .sidebar-close-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:#334155;color:#fff;border-radius:50%;cursor:pointer;font-size:18px;position:absolute;top:12px;right:12px}
+      .system-title{display:none}
+      .topbar-divider{display:none}
+      .form-grid{grid-template-columns:1fr!important}
+    }
+    @media (max-width:640px){
+      .user-name{display:none}
+      .topbar{padding:0 10px}
+      .topbar-right{gap:8px}
+      .main-content{padding:12px}
+      h1{font-size:19px}
+      .toolbar{flex-direction:column;align-items:stretch}
+      .search-box{min-width:0}
+      .stat-strip{flex-direction:column}
+    }
+    .card{background:#fff;padding:22px 24px;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:20px}
+    h1{font-size:22px;color:#1e293b;margin-bottom:4px}
+    .page-sub{color:#64748b;font-size:13.5px;margin-bottom:20px}
+    .preview-banner{background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .preview-banner select{padding:6px 10px;border:1px solid #f59e0b;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;background:#fff}
+    .pending-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 16px;font-size:13.5px;color:#1e40af;margin-bottom:20px}
+    .pending-banner strong{display:block;margin-bottom:4px;font-size:14px}
+    .profile-head{display:flex;gap:18px;align-items:center;margin-bottom:4px}
+    .photo-wrap{width:88px;height:110px;border-radius:8px;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:36px;color:#cbd5e1;flex-shrink:0;position:relative;cursor:pointer;border:2px dashed #cbd5e1}
+    .photo-wrap img{width:100%;height:100%;object-fit:cover}
+    .photo-wrap:hover{border-color:#7c3aed}
+    .photo-hint{font-size:10.5px;color:#94a3b8;text-align:center;margin-top:4px}
+    .profile-name{font-size:19px;font-weight:700;color:#1e293b}
+    .profile-code{font-size:13px;color:#64748b;font-family:monospace;margin-top:2px}
+    .profile-meta{font-size:12.5px;color:#64748b;margin-top:4px}
+
+    .tab-bar{display:flex;gap:4px;margin-bottom:18px;border-bottom:2px solid #e2e8f0;overflow-x:auto}
+    .tab-btn{padding:10px 16px;font-size:13px;font-weight:600;color:#64748b;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:'Sarabun',sans-serif;white-space:nowrap}
+    .tab-btn.active{color:#7c3aed;border-bottom-color:#7c3aed}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    .section-title{font-size:14px;font-weight:700;color:#1e293b;margin:4px 0 12px;display:flex;align-items:center;gap:8px}
+    .section-title .badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+    .badge-locked{background:#f1f5f9;color:#64748b}
+    .badge-editable{background:#dcfce7;color:#16a34a}
+    .badge-readonly{background:#eff6ff;color:#0056b3}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group label{font-size:11.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:5px}
+    .form-group input,.form-group select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:5px;font-size:13.5px;font-family:'Sarabun',sans-serif}
+    .form-group input:focus,.form-group select:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+    .form-group input:disabled{background:#f8fafc;color:#94a3b8;cursor:not-allowed}
+    .btn{padding:9px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13.5px;font-weight:600;font-family:'Sarabun',sans-serif}
+    .btn:hover{opacity:.85}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-primary{background:#7c3aed;color:#fff}
+    .btn-outline{background:#fff;color:#475569;border:1.5px solid #cbd5e1}
+    .btn-sm{padding:5px 12px;font-size:12px}
+
+    .ben-row{display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 80px 32px;gap:8px;margin-bottom:8px;align-items:center}
+    .ben-row input{padding:7px 8px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;font-family:'Sarabun',sans-serif}
+    .ben-remove{background:#fee2e2;color:#dc2626;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px}
+    .ben-total{font-size:12.5px;font-weight:600;margin-top:6px}
+    .ben-total.ok{color:#16a34a}
+    .ben-total.bad{color:#dc2626}
+
+    .history-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+    .history-table th{text-align:left;padding:7px 10px;background:#f8fafc;font-size:11px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0}
+    .history-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+    .status-pill{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px}
+    .status-pending{background:#fef3c7;color:#b45309}
+    .status-approved{background:#dcfce7;color:#16a34a}
+    .status-rejected{background:#fee2e2;color:#dc2626}
+    .empty-state{text-align:center;padding:24px;color:#94a3b8;font-size:13px}
+    .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+    .toast{background:#1e293b;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:fadeIn .2s ease}
+    .toast.error{background:#dc2626}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .no-record{text-align:center;padding:60px 20px;color:#94a3b8}
+    .no-record .icon{font-size:44px;margin-bottom:12px}
+
+    .salary-strip{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+    .salary-chip{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;flex:1;min-width:140px}
+    .salary-chip .lbl{font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700}
+    .salary-chip .val{font-size:18px;font-weight:700;color:#1e293b;margin-top:4px}
+    .salary-chip.net .val{color:#16a34a}
+    .payslip-gate{background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:8px;padding:16px;text-align:center;color:#94a3b8;font-size:13px}
+    .payslip-ready{background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:16px;text-align:center}
+    .appraisal-card{border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:10px}
+    .appraisal-year{font-weight:700;font-size:14px;color:#1e293b}
+    .appraisal-rating{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 10px;border-radius:20px;background:#ede9fe;color:#7c3aed;margin-left:8px}
+    .appraisal-comments{font-size:12.5px;color:#64748b;margin-top:6px;line-height:1.6}
+    .ben-pending-notice{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#1e40af;margin-bottom:12px;line-height:1.6}
+    .gratuity-preview{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;font-size:12.5px;color:#475569;line-height:1.8}
+    .gratuity-preview .gp-title{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px}
+    .gratuity-preview .gp-total{font-size:16px;font-weight:700;color:#16a34a;margin:6px 0}
+    .gratuity-preview table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px}
+    .gratuity-preview th{text-align:left;padding:6px 8px;background:#eef2f7;font-size:11px;color:#64748b;font-weight:700}
+    .gratuity-preview td{padding:6px 8px;border-bottom:1px solid #eef2f7}
+    .gratuity-preview .gp-note{font-size:11.5px;color:#94a3b8;margin-top:8px;line-height:1.6}
+    .payslip-history-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+    .payslip-history-table th{text-align:left;padding:7px 10px;background:#f8fafc;font-size:11px;color:#64748b;font-weight:700;border-bottom:1px solid #e2e8f0}
+    .payslip-history-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+    .ph-link{color:#7c3aed;font-weight:600;text-decoration:none;font-size:12px}
+    .ph-link:hover{text-decoration:underline}
+    .cancel-req-btn{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:5px;padding:3px 10px;font-size:11.5px;cursor:pointer;font-family:'Sarabun',sans-serif;margin-left:6px}
+    .cancel-req-btn:hover{background:#fecaca}
+    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:20px}
+    .modal-backdrop.open{display:flex}
+    .modal{background:#fff;border-radius:10px;width:760px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0}
+    .modal-header h2{font-size:15px;font-weight:700;color:#1e293b}
+    .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8}
+    .modal-body{padding:16px 20px}
+    .modal-footer{padding:12px 20px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+    .slip-wrap{position:relative;border:1.5px solid #3b82f6;border-radius:8px;overflow:hidden;background:#fff;max-width:720px;margin:0 auto}
+    .slip-watermark{position:absolute;top:0;left:0;right:0;bottom:0;opacity:.10;pointer-events:none;z-index:0;background-size:106px 150px;background-repeat:repeat;filter:grayscale(1) contrast(0.9);background-image:url("data:image/png;base64,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")}
+    .slip-header{padding:10px 14px;border-bottom:1.5px solid #3b82f6;display:flex;align-items:center;gap:12px}
+    .slip-logo{width:40px;height:56px;flex-shrink:0;object-fit:contain;image-rendering:auto}
+    .slip-org{flex:1}
+    .slip-org .th-name{font-size:15px;font-weight:700;color:#3b82f6;line-height:1.4}
+    .slip-org .en-name{font-size:9.5px;color:#3b82f6;line-height:1.5;margin-top:4px;max-width:420px}
+    .slip-title{font-size:16px;font-weight:800;color:#3b82f6;text-align:right;line-height:1.4}
+    .slip-info{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #3b82f6}
+    .slip-info-col{padding:6px 14px}
+    .slip-info-col:first-child{border-right:1px solid #3b82f6}
+    .slip-info-row{display:flex;gap:6px;font-size:12px;margin-bottom:3px;align-items:baseline}
+    .slip-info-row .lbl{color:#3b82f6;white-space:nowrap;font-weight:600;min-width:90px}
+    .slip-info-row .val{color:#1e293b;font-weight:500}
+    .slip-body{display:grid;grid-template-columns:1fr 1px 1fr}
+    .slip-divider{background:#3b82f6}
+    .slip-col-header{background:#3b82f6;color:#fff;text-align:center;font-size:12.5px;font-weight:700;padding:5px 10px}
+    .slip-items{padding:6px 10px;min-height:100px}
+    .slip-item{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #e2e8f0}
+    .slip-item:last-child{border-bottom:none}
+    .slip-item .iname{color:#475569}
+    .slip-item .amount{color:#1e293b;font-weight:500;min-width:80px;text-align:right}
+    .slip-subtotal{display:flex;justify-content:space-between;font-size:12px;font-weight:700;padding:5px 10px;border-top:1.5px solid #3b82f6;background:#eff6ff;color:#3b82f6}
+    .slip-net{background:#3b82f6;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:7px 14px;font-weight:800}
+    .slip-copy-badge{position:absolute;top:10px;right:14px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+    .slip-legal-footer{font-size:9px;line-height:1.5;color:#b91c1c;font-weight:600;padding:8px 14px 10px;border-top:1px dashed #cbd5e1;position:relative;z-index:2;background:#fff}
+    .slip-net .lbl{font-size:13px}.slip-net .val{font-size:17px}
+    @media print{ body *{visibility:hidden} #printSlipArea,#printSlipArea *{visibility:visible} #printSlipArea{position:absolute;top:0;left:0;width:100%} }
+    .salary-lock-card{background:#fff;border-radius:12px;padding:40px 24px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:420px;margin:20px auto}
+    .salary-lock-card .lock-icon{font-size:40px;margin-bottom:8px}
+    .salary-lock-card .lock-title{font-size:16px;font-weight:700;color:#1e293b;margin-bottom:6px}
+    .salary-lock-card .lock-sub{font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6}
+    .copy-hint{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#1d4ed8;margin-bottom:10px}
+    .pw-gate-body{padding:6px 4px}
+    .pw-gate-row{margin-bottom:14px}
+    .pw-gate-row label{display:block;font-size:12.5px;color:#64748b;margin-bottom:5px;font-weight:600}
+    .pw-gate-row input{width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:14px}
+    .pw-gate-row input[readonly]{background:#f1f5f9;color:#64748b}
+    .pw-gate-err{color:#dc2626;font-size:12.5px;margin-top:6px;min-height:16px}
+  @media (max-width:640px){.current-time{display:none}.user-role{padding:4px 8px;font-size:12px}}
+@media (min-width:1025px){.sidebar{width:300px}.menu-item{white-space:nowrap}}
+
+  /* ---------- กระดิ่งแจ้งเตือน (เพิ่มโดย Claude) ---------- */
+  .ntf-wrap{position:relative;display:inline-flex;align-items:center}
+  .ntf-bell-btn{position:relative;background:none;border:none;cursor:pointer;font-size:20px;padding:6px;line-height:1;border-radius:50%;transition:background .15s}
+  .ntf-bell-btn:hover{background:#f1f5f9}
+  .ntf-badge{position:absolute;top:-2px;right:-2px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1;box-shadow:0 0 0 2px #fff}
+  .ntf-badge.show{display:flex}
+  .ntf-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:360px;max-width:88vw;max-height:70vh;overflow-y:auto;background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.18);z-index:5000;border:1px solid #e2e8f0}
+  .ntf-panel.open{display:block}
+  .ntf-panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff}
+  .ntf-panel-header strong{font-size:14px;color:#1e293b}
+  .ntf-mark-all{background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer;font-family:inherit}
+  .ntf-mark-all:hover{text-decoration:underline}
+  .ntf-item{display:block;width:100%;text-align:left;padding:11px 14px;border:none;background:none;border-bottom:1px solid #f8fafc;cursor:pointer;font-family:inherit}
+  .ntf-item:hover{background:#f8fafc}
+  .ntf-item.unread{background:#eff6ff}
+  .ntf-item.unread:hover{background:#dbeafe}
+  .ntf-item-title{font-size:13px;color:#1e293b;font-weight:600;display:flex;align-items:center;gap:6px}
+  .ntf-dot{width:7px;height:7px;border-radius:50%;background:#2563eb;flex-shrink:0}
+  .ntf-item-msg{font-size:12.5px;color:#64748b;margin-top:3px;line-height:1.4}
+  .ntf-item-time{font-size:10.5px;color:#94a3b8;margin-top:4px}
+  .ntf-empty{padding:40px 20px;text-align:center;color:#94a3b8;font-size:13px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="เมนู">☰</button>
+    <img src="https://sydijbrkbfvjrcxhfrlo.supabase.co/storage/v1/object/public/Logo/LOGO.jpg" alt="โลโก้" class="logo-img">
+    <div class="system-title">HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</div>
+    <div class="topbar-divider">|</div>
+    <div class="current-time" id="live-clock">กำลังโหลด...</div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-role" id="topbar-role-badge">🧑 เจ้าหน้าที่ (Employee)</div>
+    <div class="user-name" id="topbar-user-name"></div>
+    <div class="ntf-wrap">
+      <button class="ntf-bell-btn" onclick="ntfToggle(event)" aria-label="การแจ้งเตือน">🔔<span class="ntf-badge" id="ntfBadge">0</span></button>
+      <div class="ntf-panel" id="ntfPanel">
+        <div class="ntf-panel-header"><strong>🔔 การแจ้งเตือน</strong><button class="ntf-mark-all" onclick="ntfMarkAllRead()">ทำเครื่องหมายว่าอ่านแล้วทั้งหมด</button></div>
+        <div id="ntfList"><div class="ntf-empty">กำลังโหลด...</div></div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="handleLogout()">ออกจากระบบ ⟳</button>
+  </div>
+</header>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+<div class="app-container">
+  <nav class="sidebar" id="sidebar-menu">
+    <button class="sidebar-close-btn" onclick="toggleSidebar()" aria-label="ปิดเมนู">✕</button>
+    <div id="sidebar-menu-items"></div>
+  </nav>
+  <main class="main-content">
+  <h1>👤 ข้อมูลส่วนตัว</h1>
+  <p class="page-sub">ดูและแก้ไขข้อมูลของคุณ — รายการที่ต้องรออนุมัติจะมีผลจริงหลังหัวหน้าหน่วยงานอนุมัติเท่านั้น</p>
+
+  <div class="preview-banner" id="previewBanner" style="display:none">
+    ⚠️ <b>โหมดตัวอย่าง (Preview):</b> ยังไม่ได้เปิดให้เจ้าหน้าที่ล็อกอินด้วยบัญชีตัวเองจริง — เลือกดูในฐานะเจ้าหน้าที่คนใดคนหนึ่ง:
+    <select id="previewStaffSelect" onchange="onPreviewStaffChange()"><option value="">-- เลือกเจ้าหน้าที่เพื่อดูตัวอย่าง --</option></select>
+  </div>
+
+  <div id="noRecordView" class="card" style="display:none">
+    <div class="no-record"><div class="icon">🔍</div><p>ยังไม่พบข้อมูลเจ้าหน้าที่ที่เชื่อมกับบัญชีนี้</p></div>
+  </div>
+
+  <div id="profileView" style="display:none">
+    <div id="pendingBanner" style="display:none"></div>
+
+    <div class="card">
+      <div class="profile-head">
+        <div class="photo-wrap" id="photoZone" onclick="document.getElementById('photoInput').click()">
+          <span id="photoPlaceholder">👤</span>
+          <img id="photoImg" style="display:none">
+        </div>
+        <div>
+          <div class="profile-name" id="profileName">-</div>
+          <div class="profile-code" id="profileCode">-</div>
+          <div class="profile-meta" id="profileMeta">-</div>
+          <div class="photo-hint">คลิกรูปเพื่อเปลี่ยน (บันทึกทันที ไม่ต้องรออนุมัติ)</div>
+        </div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
+      <div id="photoStatus" style="font-size:11.5px;color:#94a3b8;margin-top:4px"></div>
+    </div>
+
+    <div class="card">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="basic" onclick="switchTab('basic')">📋 ข้อมูลพื้นฐาน</button>
+        <button class="tab-btn" data-tab="address" onclick="switchTab('address')">🏠 ที่อยู่</button>
+        <button class="tab-btn" data-tab="beneficiary" onclick="switchTab('beneficiary')">🎗️ ผู้รับผลประโยชน์</button>
+        <button class="tab-btn" data-tab="personal" onclick="switchTab('personal')">🧑‍🤝‍🧑 ส่วนบุคคล</button>
+        <button class="tab-btn" data-tab="salary" onclick="switchTab('salary')">💰 เงินเดือน</button>
+        <button class="tab-btn" data-tab="appraisal" onclick="switchTab('appraisal')">📈 ผลการประเมิน</button>
+        <button class="tab-btn" data-tab="account" onclick="switchTab('account')">🔒 บัญชีผู้ใช้</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-basic">
+        <div class="section-title">🔒 ข้อมูลระบุตัวตน <span class="badge badge-locked">แก้ไขไม่ได้ — ติดต่อหน่วยงานหากข้อมูลผิด</span></div>
+        <div class="form-grid">
+          <div class="form-group"><label>คำนำหน้า-ชื่อ-สกุล</label><input type="text" id="v_fullname" disabled></div>
+          <div class="form-group"><label>เลขบัตรประชาชน</label><input type="text" id="v_id_card" disabled></div>
+          <div class="form-group"><label>เพศ</label><input type="text" id="v_gender" disabled></div>
+          <div class="form-group"><label>วันเกิด</label><input type="text" id="v_birth_date" disabled></div>
+          <div class="form-group"><label>หน่วยงาน</label><input type="text" id="v_department" disabled></div>
+          <div class="form-group"><label>ตำแหน่ง</label><input type="text" id="v_position" disabled></div>
+          <div class="form-group"><label>ประเภทเจ้าหน้าที่</label><input type="text" id="v_staff_type" disabled></div>
+          <div class="form-group"><label>วันที่เริ่มงาน</label><input type="text" id="v_start_date" disabled></div>
+          <div class="form-group"><label>สถานะ</label><input type="text" id="v_status" disabled></div>
+        </div>
+        <div class="section-title">✏️ ข้อมูลเพิ่มเติม <span class="badge badge-editable">แก้ไขได้ — ต้องรออนุมัติ</span></div>
+        <div class="form-grid" id="grid-basic"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-address">
+        <div class="section-title">✏️ ที่อยู่ <span class="badge badge-editable">แก้ไขได้ — ต้องรออนุมัติ</span></div>
+        <div class="form-grid" id="grid-address"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-beneficiary">
+        <div class="section-title">🎗️ ผู้รับผลประโยชน์ (กรณีเงินบำเหน็จ) <span class="badge badge-editable">แก้ไขได้ — ต้องรออนุมัติ</span></div>
+        <div id="benPendingNotice"></div>
+        <div id="beneficiaryRows"></div>
+        <button class="btn btn-outline btn-sm" onclick="addBeneficiaryRow()">➕ เพิ่มผู้รับผลประโยชน์</button>
+        <div class="ben-total" id="benTotal"></div>
+        <div id="gratuityPreviewBox" style="margin-top:16px"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-personal">
+        <div class="section-title">✏️ ข้อมูลส่วนบุคคล <span class="badge badge-editable">แก้ไขได้ — ต้องรออนุมัติ</span></div>
+        <div class="form-grid" id="grid-personal"></div>
+      </div>
+
+      <div class="tab-panel" id="tab-salary">
+        <div id="salaryLockGate" class="salary-lock-card">
+          <div class="lock-icon">🔒</div>
+          <div class="lock-title">ยืนยันตัวตนก่อนดูข้อมูลเงินเดือน</div>
+          <div class="lock-sub">เพื่อความปลอดภัยของข้อมูล กรุณากรอกรหัสผ่านของคุณอีกครั้งก่อนเข้าดูเงินเดือนและสลิป</div>
+          <button class="btn btn-primary" onclick="openPasswordGate()">🔑 ยืนยันตัวตน</button>
+        </div>
+        <div id="salaryUnlockedContent" style="display:none">
+          <div class="section-title">💰 เงินเดือนของฉัน <span class="badge badge-readonly">ดูอย่างเดียว</span></div>
+          <div id="salaryContent"><div class="empty-state">กำลังโหลด...</div></div>
+
+          <div class="section-title" style="margin-top:24px">📄 สลิปเงินเดือนเดือนนี้</div>
+          <div id="payslipGateContent"></div>
+
+          <div class="section-title" style="margin-top:24px">🗂️ ประวัติสลิปเงินเดือนย้อนหลัง (12 เดือนล่าสุด) — สำเนา</div>
+          <div class="copy-hint">สลิปที่แสดงในหน้านี้เป็น <strong>สำเนา</strong> สำหรับตรวจสอบข้อมูลเท่านั้น หากต้องการฉบับจริงเพื่อใช้ยื่นเอกสารราชการ กรุณาติดต่อฝ่ายบุคคลเพื่อขอรับใบจ่ายเงินเดือนฉบับจริง</div>
+          <div id="payslipHistoryContent"><div class="empty-state">กำลังโหลด...</div></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-appraisal">
+        <div class="section-title">📈 ผลการประเมินประจำปี (ย้อนหลัง 3 ปี) <span class="badge badge-readonly">ดูอย่างเดียว</span></div>
+        <div id="appraisalContent"><div class="empty-state">กำลังโหลด...</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-account">
+        <div class="section-title">🔒 เปลี่ยนรหัสผ่าน</div>
+        <div class="form-grid">
+          <div class="form-group"><label>รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)</label><input type="password" id="v_new_password" autocomplete="new-password"></div>
+          <div class="form-group"><label>ยืนยันรหัสผ่านใหม่อีกครั้ง</label><input type="password" id="v_new_password_confirm" autocomplete="new-password"></div>
+        </div>
+        <div id="passwordChangeMsg" style="font-size:12.5px;margin-top:8px"></div>
+        <button class="btn btn-primary" id="changePasswordBtn" onclick="changeMyPassword()" style="margin-top:12px">🔒 เปลี่ยนรหัสผ่าน</button>
+
+        <div class="section-title" style="margin-top:28px">👆 เข้าสู่ระบบด้วยลายนิ้วมือ / Face ID</div>
+        <div style="font-size:12.5px;color:var(--gray-500);margin-bottom:12px;line-height:1.6">
+          เปิดใช้งานแล้ว ครั้งต่อไปที่เปิดแอปในเครื่องนี้ แตะลายนิ้วมือ/สแกนหน้าแทนการพิมพ์รหัสผ่านได้เลย —
+          ใช้ได้เฉพาะเครื่องนี้เครื่องเดียว ถ้าเปลี่ยนมือถือหรือล้างเครื่องต้องมาเปิดใช้งานใหม่
+        </div>
+        <div id="webauthnStatus" style="margin-bottom:12px;font-size:13px"></div>
+        <button class="btn btn-primary" id="webauthnBtn" onclick="toggleWebauthn()">👆 เปิดใช้งาน</button>
+      </div>
+
+      <div id="editFooter" style="margin-top:22px;display:flex;gap:10px;border-top:1px solid #e2e8f0;padding-top:18px">
+        <button class="btn btn-primary" id="submitBtn" onclick="submitEditRequest()">📤 ส่งคำขอแก้ไขข้อมูล</button>
+        <button class="btn btn-outline" onclick="loadProfile()">↺ รีเซ็ตฟอร์ม</button>
+      </div>
+      <div id="viewOnlyNotice" style="display:none;margin-top:22px;border-top:1px solid #e2e8f0;padding-top:18px;font-size:12.5px;color:#94a3b8">
+        🔒 แท็บนี้เป็นข้อมูลดูอย่างเดียว ไม่สามารถส่งคำขอแก้ไขได้
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0">🕘 ประวัติคำขอแก้ไข</div>
+      <div id="historyWrap"><div class="empty-state">กำลังโหลด...</div></div>
+    </div>
+  </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="slipModal">
+  <div class="modal">
+    <div class="modal-header"><h2 id="slipModalTitle">สลิปเงินเดือน</h2><button class="modal-close" onclick="closeSlipModal()">✕</button></div>
+    <div class="modal-body" id="printSlipArea"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSlipModal()">ปิด</button>
+      <button class="btn btn-success" onclick="downloadCurrentSlipPdf()" id="empDownloadPdfBtn">📥 ดาวน์โหลด PDF (A4)</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="passwordGateModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header"><h2>ยืนยันตัวตนเพื่อดูสลิป</h2><button class="modal-close" onclick="closePasswordGate()">✕</button></div>
+    <div class="modal-body pw-gate-body">
+      <div class="pw-gate-row">
+        <label>รหัสประจำตัวพนักงาน</label>
+        <input type="text" id="pwGateEmpCode" readonly>
+      </div>
+      <div class="pw-gate-row">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="pwGatePassword" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitPasswordGate()">
+      </div>
+      <div class="pw-gate-err" id="pwGateErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePasswordGate()">ยกเลิก</button>
+      <button class="btn btn-primary" id="pwGateSubmitBtn" onclick="submitPasswordGate()">✓ ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const SUPABASE_URL='https://sydijbrkbfvjrcxhfrlo.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5ZGlqYnJrYmZ2anJjeGhmcmxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTEwMTQsImV4cCI6MjA5ODI4NzAxNH0.vm6s9R6Lig8DKz41rRfBnvaXqu4QdoH0MGx0BS77ZRA';
+const{createClient}=supabase;const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentUser=null,currentProfile=null,currentStaff=null,editableFields=[],previewMode=false,originalBeneficiaries=[],currentPendingRequest=null;
+const typeLabel={1:'เจ้าหน้าที่มูลนิธิ',2:'ทดลองปฏิบัติงาน',3:'ลูกจ้างชั่วคราว',4:'ที่ปรึกษา/ผู้เชี่ยวชาญ'};
+const statusLabel={active:'ทำงานอยู่',resigned:'ลาออก',retired:'เกษียณ',deceased:'เสียชีวิต',terminated:'เลิกจ้าง'};
+const genderLabel={M:'ชาย',F:'หญิง'};
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function showToast(msg,isErr=false){const w=document.getElementById('toastWrap');const t=document.createElement('div');t.className='toast'+(isErr?' error':'');t.innerHTML=`<span>${isErr?'⚠️':'✅'}</span><span>${esc(msg)}</span>`;w.appendChild(t);setTimeout(()=>t.remove(),4000);}
+function startLiveClock(){function t(){const n=new Date();const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];const mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];document.getElementById('live-clock').innerText=`วัน${days[n.getDay()]}ที่ ${n.getDate()} ${mn[n.getMonth()]} ${n.getFullYear()+543} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')} น.`;}setInterval(t,1000);t();}
+async function handleLogout(){await sb.auth.signOut();window.location.href='login.html';}
+
+const VIEW_ONLY_TABS=['salary','appraisal'];
+async function changeMyPassword(){
+  const pw=document.getElementById('v_new_password').value;
+  const pwConfirm=document.getElementById('v_new_password_confirm').value;
+  const msgEl=document.getElementById('passwordChangeMsg');
+  msgEl.textContent='';
+  if(pw.length<8){msgEl.innerHTML='<span style="color:#dc2626">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</span>';return;}
+  if(pw!==pwConfirm){msgEl.innerHTML='<span style="color:#dc2626">รหัสผ่านที่กรอกทั้ง 2 ช่องไม่ตรงกัน</span>';return;}
+
+  const btn=document.getElementById('changePasswordBtn');
+  btn.disabled=true;btn.textContent='กำลังเปลี่ยน...';
+  const{error}=await sb.auth.updateUser({password:pw});
+  btn.disabled=false;btn.textContent='🔒 เปลี่ยนรหัสผ่าน';
+  if(error){msgEl.innerHTML=`<span style="color:#dc2626">เปลี่ยนรหัสผ่านไม่สำเร็จ: ${error.message}</span>`;return;}
+  msgEl.innerHTML='<span style="color:#16a34a">✓ เปลี่ยนรหัสผ่านสำเร็จ ครั้งต่อไปให้ใช้รหัสผ่านใหม่ล็อกอิน</span>';
+  document.getElementById('v_new_password').value='';
+  document.getElementById('v_new_password_confirm').value='';
+}
+
+// ============================================================
+// เข้าสู่ระบบด้วยลายนิ้วมือ / Face ID (WebAuthn platform authenticator)
+// หมายเหตุ: นี่คือ "กุญแจปลดล็อกเครื่อง" ไม่ใช่การยืนยันตัวตนแทนรหัสผ่านทั้งหมด —
+// เซสชัน Login เดิม (ที่ supabase-js เก็บไว้ในเครื่องอยู่แล้วโดยอัตโนมัติ) ยังเป็นตัวเข้าระบบจริง
+// ลายนิ้วมือทำหน้าที่เป็นด่านยืนยันตัวตนของ "เครื่องนี้" ก่อนจะปล่อยให้เข้าเซสชันที่ค้างอยู่
+const WEBAUTHN_KEY='hris_webauthn_cred';
+
+function getWebauthnCred(){
+  try{const raw=localStorage.getItem(WEBAUTHN_KEY);if(!raw)return null;const obj=JSON.parse(raw);return obj.email===currentUser.email?obj:null;}
+  catch(e){return null;}
+}
+
+function renderWebauthnStatus(){
+  const statusEl=document.getElementById('webauthnStatus');
+  const btn=document.getElementById('webauthnBtn');
+  if(!statusEl||!btn)return;
+  if(!window.PublicKeyCredential){
+    statusEl.innerHTML='<span style="color:var(--gray-500)">เบราว์เซอร์นี้ไม่รองรับการเข้าระบบด้วยลายนิ้วมือ</span>';
+    btn.style.display='none';
+    return;
+  }
+  const cred=getWebauthnCred();
+  if(cred){
+    statusEl.innerHTML='<span style="color:#16a34a;font-weight:600">✅ เปิดใช้งานอยู่ในเครื่องนี้</span>';
+    btn.textContent='🚫 ปิดใช้งานในเครื่องนี้';
+  }else{
+    statusEl.innerHTML='<span style="color:var(--gray-500)">ยังไม่ได้เปิดใช้งานในเครื่องนี้</span>';
+    btn.textContent='👆 เปิดใช้งาน';
+  }
+}
+
+async function toggleWebauthn(){
+  const existing=getWebauthnCred();
+  if(existing){
+    if(!confirm('ปิดใช้งานเข้าระบบด้วยลายนิ้วมือในเครื่องนี้?'))return;
+    localStorage.removeItem(WEBAUTHN_KEY);
+    renderWebauthnStatus();
+    showToast('ปิดใช้งานแล้ว');
+    return;
+  }
+
+  if(!window.PublicKeyCredential){showToast('เบราว์เซอร์นี้ไม่รองรับ',true);return;}
+
+  const btn=document.getElementById('webauthnBtn');
+  btn.disabled=true;btn.textContent='กำลังตั้งค่า...';
+
+  try{
+    const available=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if(!available){showToast('เครื่องนี้ไม่มีเซนเซอร์ลายนิ้วมือ/Face ID หรือยังไม่ได้ตั้งค่าไว้ในตัวเครื่อง',true);return;}
+
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    const userIdBytes=new TextEncoder().encode(currentUser.id);
+
+    const cred=await navigator.credentials.create({
+      publicKey:{
+        challenge,
+        rp:{name:'HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ'},
+        user:{id:userIdBytes,name:currentUser.email,displayName:currentProfile.display_name||currentUser.email},
+        pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+        authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
+        timeout:60000,
+      }
+    });
+
+    const credIdB64=btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+    localStorage.setItem(WEBAUTHN_KEY,JSON.stringify({credId:credIdB64,email:currentUser.email}));
+    showToast('เปิดใช้งานเข้าระบบด้วยลายนิ้วมือสำเร็จ');
+  }catch(err){
+    if(err.name==='NotAllowedError')showToast('ยกเลิกการตั้งค่า หรือสแกนไม่สำเร็จ',true);
+    else showToast('ตั้งค่าไม่สำเร็จ: '+err.message,true);
+  }finally{
+    btn.disabled=false;
+    renderWebauthnStatus();
+  }
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
+  const isViewOnly=VIEW_ONLY_TABS.includes(name);
+  const isAccountTab=name==='account';
+  document.getElementById('editFooter').style.display=(isViewOnly||isAccountTab)?'none':'flex';
+  document.getElementById('viewOnlyNotice').style.display=(isViewOnly&&!isAccountTab)?'block':'none';
+}
+
+const employeeMenu=[
+  {type:'category',name:'เมนูของฉัน'},
+  {type:'item',name:'ข้อมูลส่วนตัว',icon:'👤',link:'my_profile.html',active:true},
+  {type:'item',name:'เช็คอิน เข้า-ออกงาน',icon:'📍',link:'checkin.html'},
+  {type:'item',name:'ขอลา',icon:'🗓️',link:'my_leave.html'},
+  {type:'item',name:'แชทกับ HR',icon:'💬',link:'my_chat.html'},
+];
+const adminPreviewMenu=[
+  {type:'category',name:'เมนูของฉัน'},
+  {type:'item',name:'ข้อมูลส่วนตัว (โหมด Preview)',icon:'👤',link:'my_profile.html',active:true},
+  {type:'category',name:'กลับสู่ระบบแอดมิน'},
+  {type:'item',name:'Dashboard',icon:'📊',link:'dashboard.html'},
+];
+function renderSidebar(m){
+  const c=document.getElementById('sidebar-menu-items');
+  c.innerHTML='';
+  m.forEach(x=>{
+    if(x.type==='category'){const d=document.createElement('div');d.className='menu-category';d.innerText=x.name;c.appendChild(d);}
+    else{const a=document.createElement('a');a.href=x.link||'#';a.className='menu-item'+(x.active?' active':'');a.innerHTML=`<span>${x.icon}</span> ${x.name}`;c.appendChild(a);}
+  });
+}
+function toggleSidebar(){document.getElementById('sidebar-menu').classList.toggle('open');document.getElementById('sidebarBackdrop').classList.toggle('show');}
+
+async function authGuard(){
+  const{data}=await sb.auth.getSession();
+  if(!data.session){window.location.href='login.html';return false;}
+  currentUser=data.session.user;
+  const{data:p}=await sb.from('profiles').select('display_name,role,department').eq('id',currentUser.id).single();
+  currentProfile=p||{display_name:currentUser.email,role:null};
+  document.getElementById('topbar-user-name').innerText=currentProfile.display_name||currentUser.email;
+  const roleLabel={super:'⬡ Super Admin (Preview)',unit:'⬡ Unit Admin (Preview)',employee:'🧑 เจ้าหน้าที่ (Employee)'};
+  document.getElementById('topbar-role-badge').innerText=roleLabel[currentProfile.role]||'🧑 เจ้าหน้าที่ (Employee)';
+  renderSidebar((currentProfile.role==='super'||currentProfile.role==='unit')?adminPreviewMenu:employeeMenu);
+  return true;
+}
+
+async function findMyStaffRecord(){
+  const{data}=await sb.from('staff').select('*').eq('user_id',currentUser.id).maybeSingle();
+  return data||null;
+}
+
+async function enterPreviewMode(){
+  previewMode=true;
+  document.getElementById('previewBanner').style.display='flex';
+  const{data}=await sb.from('staff').select('id,employee_code,prefix,first_name,last_name,department').eq('status','active').order('employee_code');
+  const sel=document.getElementById('previewStaffSelect');
+  (data||[]).forEach(s=>{
+    sel.innerHTML+=`<option value="${s.id}">${esc(s.employee_code)} — ${esc((s.prefix||'')+s.first_name+' '+s.last_name)}${s.department?' ('+esc(s.department)+')':''}</option>`;
+  });
+}
+async function onPreviewStaffChange(){
+  const id=document.getElementById('previewStaffSelect').value;
+  if(!id){document.getElementById('profileView').style.display='none';document.getElementById('noRecordView').style.display='block';return;}
+  const{data}=await sb.from('staff').select('*').eq('id',id).single();
+  currentStaff=data;
+  await renderProfile();
+}
+
+async function loadEditableFieldsConfig(){
+  const{data,error}=await sb.from('staff_field_permissions').select('*').eq('editable_by_employee',true).order('field_name');
+  if(error){
+    showToast('ยังไม่พบตาราง staff_field_permissions ครบ — กรุณารัน prepare_employee_tier_schema.sql และ part2 ก่อน',true);
+    editableFields=[];
+    return;
+  }
+  editableFields=data||[];
+}
+
+const fieldInputType={
+  email:'email', phone:'text', address_current:'text', address:'text', marital_status:'select',
+  spouse_name:'text', spouse_phone:'text', emergency_contact1_name:'text',
+  emergency_contact1_phone:'text', emergency_contact1_relation:'text',
+  emergency_contact2_name:'text', emergency_contact2_phone:'text', emergency_contact2_relation:'text',
+  blood_type:'select', chronic_disease:'text', bank_account:'text', bank_name:'select',
+  education_level_current:'select', education_field:'text', education_institution:'text',
+  nationality:'text', religion:'text',
+};
+const maritalOptions=['โสด','สมรส','หย่าร้าง','หม้าย'];
+const bloodOptions=['A','B','AB','O'];
+const bankOptions=['กสิกรไทย','ไทยพาณิชย์','กรุงเทพ','กรุงไทย','กรุงศรีอยุธยา','ทหารไทยธนชาต','ออมสิน','อื่นๆ'];
+const eduOptions=['ม.3 / ต่ำกว่า','ม.6 / ปวช.','ปวส.','ปริญญาตรี','ปริญญาโท'];
+
+function buildFieldsForm(category,gridId){
+  const grid=document.getElementById(gridId);
+  grid.innerHTML='';
+  const pendingChanges=(currentPendingRequest&&currentPendingRequest.changes)||{};
+  editableFields.filter(f=>f.category===category&&f.field_name!=='photo_url').forEach(f=>{
+    const inputType=fieldInputType[f.field_name]||'text';
+    const fid='f_'+f.field_name;
+    const hasPending=Object.prototype.hasOwnProperty.call(pendingChanges,f.field_name);
+    const currentVal=hasPending?(pendingChanges[f.field_name].new||''):(currentStaff[f.field_name]||'');
+    let inputHtml='';
+    if(inputType==='select'){
+      const opts=f.field_name==='marital_status'?maritalOptions:f.field_name==='blood_type'?bloodOptions:f.field_name==='education_level_current'?eduOptions:bankOptions;
+      const normalizedVal=(currentVal||'').trim();
+      const matchFound=opts.some(o=>o===normalizedVal);
+      // ถ้าค่าที่เก็บไว้จริงไม่ตรงกับตัวเลือกใดเลย (เช่น มีคำนำหน้า/ช่องว่างเกิน) ห้ามปล่อยให้ browser เลือกตัวแรกในลิสต์แทนแบบเงียบๆ
+      // เพราะจะดูเหมือนเลือกถูกต้องทั้งที่จริงๆ ค่าไม่ตรง — ให้โชว์ค่าจริงเป็นตัวเลือกพิเศษแทน
+      const specialOption=!matchFound?`<option value="${esc(normalizedVal)}" selected>${normalizedVal?esc(normalizedVal)+' (ค่าเดิม)':'-- เลือก --'}</option>`:'';
+      inputHtml=`<select id="${fid}">${specialOption}`+opts.map(o=>`<option value="${esc(o)}" ${o===normalizedVal?'selected':''}>${esc(o)}</option>`).join('')+`</select>`;
+    }else{
+      inputHtml=`<input type="${inputType}" id="${fid}" value="${esc(currentVal)}">`;
+    }
+    const div=document.createElement('div');
+    div.className='form-group';
+    div.innerHTML=`<label>${esc(f.label_th||f.field_name)}${hasPending?' <span style="color:#b45309;font-weight:600">⏳ รออนุมัติ</span>':''}</label>${inputHtml}`;
+    grid.appendChild(div);
+  });
+}
+
+async function renderProfile(){
+  if(!currentStaff){
+    document.getElementById('profileView').style.display='none';
+    document.getElementById('noRecordView').style.display='block';
+    return;
+  }
+  document.getElementById('noRecordView').style.display='none';
+  document.getElementById('profileView').style.display='block';
+
+  const s=currentStaff;
+  document.getElementById('profileName').textContent=(s.prefix||'')+s.first_name+' '+s.last_name;
+  document.getElementById('profileCode').textContent=s.employee_code||'-';
+  document.getElementById('profileMeta').textContent=`${s.department||'-'} · ${s.position||'-'}`;
+  if(s.photo_url){
+    document.getElementById('photoImg').src=s.photo_url;
+    document.getElementById('photoImg').style.display='block';
+    document.getElementById('photoPlaceholder').style.display='none';
+  }else{
+    document.getElementById('photoImg').style.display='none';
+    document.getElementById('photoPlaceholder').style.display='block';
+  }
+
+  document.getElementById('v_fullname').value=(s.prefix||'')+s.first_name+' '+s.last_name;
+  document.getElementById('v_id_card').value=s.id_card?s.id_card.replace(/(\d)(\d{4})(\d{5})(\d{2})(\d)/,'$1-$2-$3-$4-$5'):'-';
+  document.getElementById('v_gender').value=genderLabel[s.gender]||'-';
+  document.getElementById('v_birth_date').value=s.birth_date||'-';
+  document.getElementById('v_department').value=s.department||'-';
+  document.getElementById('v_position').value=s.position||'-';
+  document.getElementById('v_staff_type').value=typeLabel[s.staff_type]||'-';
+  document.getElementById('v_start_date').value=s.start_date||'-';
+  document.getElementById('v_status').value=statusLabel[s.status]||s.status||'-';
+
+  await checkPendingRequest();
+  buildFieldsForm('basic','grid-basic');
+  buildFieldsForm('address','grid-address');
+  buildFieldsForm('personal','grid-personal');
+  await loadBeneficiaries();
+  await loadHistory();
+  // หมายเหตุ: ไม่โหลดข้อมูลเงินเดือน/สลิปตั้งแต่ตอนเปิดหน้า เพื่อบังคับให้ยืนยันรหัสผ่านก่อน (ดู openPasswordGate/submitPasswordGate)
+  document.getElementById('pwGateEmpCode').value=s.employee_code||'-';
+  await loadAppraisalTab();
+  switchTab('basic');
+}
+
+async function loadBeneficiaries(){
+  const{data}=await sb.from('staff_beneficiaries').select('*').eq('staff_id',currentStaff.id).order('created_at');
+  originalBeneficiaries=data||[];
+
+  const notice=document.getElementById('benPendingNotice');
+  const pendingBen=currentPendingRequest&&currentPendingRequest.changes&&currentPendingRequest.changes.beneficiaries;
+  document.getElementById('beneficiaryRows').innerHTML='';
+  if(pendingBen&&pendingBen.new&&pendingBen.new.length){
+    // แสดงข้อมูลที่ส่งขอแก้ไขไว้ (รอการอนุมัติ) แทนที่จะดึงข้อมูลเดิมจากระบบ — แก้บั๊กรีเฟรชแล้วข้อมูลย้อนกลับ
+    notice.innerHTML=`<div class="ben-pending-notice">⏳ กำลังแสดงข้อมูลที่คุณส่งขอแก้ไขไว้ (ยังรอการอนุมัติ) — ข้อมูลนี้ยังไม่มีผลจริงในระบบจนกว่าหัวหน้าหน่วยงานจะอนุมัติ</div>`;
+    pendingBen.new.forEach(b=>addBeneficiaryRow(b));
+  }else{
+    notice.innerHTML='';
+    if(originalBeneficiaries.length){originalBeneficiaries.forEach(b=>addBeneficiaryRow(b));}
+    else addBeneficiaryRow();
+  }
+  updateBenTotal();
+  await renderGratuityPreview();
+}
+
+// ============================================================
+// ตัวช่วยประมาณเงินบำเหน็จกรณีเสียชีวิต (ผูกกับผู้รับผลประโยชน์)
+// ============================================================
+function calcYearsOfService(startDate){
+  if(!startDate)return 0;
+  const start=new Date(startDate),now=new Date();
+  let years=now.getFullYear()-start.getFullYear();
+  const md=(now.getMonth()-start.getMonth())||(now.getDate()-start.getDate());
+  if(md<0)years--;
+  return Math.max(0,years);
+}
+function gratuityDeathMultiplier(years){
+  // ตามระเบียบ: อายุงาน >10-20 ปี = 3.5 เท่า, มากกว่า 20 ปีขึ้นไป = 5 เท่า, เศษปีไม่นำมาคำนวณ
+  const y=Math.floor(years);
+  if(y>20)return 5;
+  if(y>10)return 3.5;
+  return 0;
+}
+async function fetchLastKnownSalary(){
+  const{data}=await sb.from('salary_records').select('base_salary,year_be,month').eq('staff_id',currentStaff.id).order('year_be',{ascending:false}).order('month',{ascending:false}).limit(1).maybeSingle();
+  return data?Number(data.base_salary||0):0;
+}
+async function renderGratuityPreview(){
+  const box=document.getElementById('gratuityPreviewBox');
+  if(!box)return;
+  const years=calcYearsOfService(currentStaff.start_date);
+  const multiplier=gratuityDeathMultiplier(years);
+  const lastSalary=await fetchLastKnownSalary();
+  const rows=[...document.querySelectorAll('.ben-row')].map(row=>({
+    name:row.querySelector('.ben-name').value.trim(),
+    pct:parseFloat(row.querySelector('.ben-pct').value)||0,
+  })).filter(b=>b.name);
+
+  if(multiplier===0){
+    box.innerHTML=`<div class="gratuity-preview"><div class="gp-title">🧮 ประมาณการเงินบำเหน็จ กรณีเสียชีวิต</div>
+      <div class="gp-note">อายุงานปัจจุบันประมาณ ${years} ปี — ยังไม่ครบเกณฑ์ขั้นต่ำ 10 ปีสำหรับสิทธิ์เงินบำเหน็จกรณีเสียชีวิต ตามระเบียบสวัสดิการของมูลนิธิ</div></div>`;
+    return;
+  }
+  const total=lastSalary*multiplier;
+  box.innerHTML=`<div class="gratuity-preview">
+    <div class="gp-title">🧮 ประมาณการเงินบำเหน็จ กรณีเสียชีวิต (คำนวณอัตโนมัติ)</div>
+    อายุงานประมาณ ${years} ปี → อัตรา ${multiplier} เท่าของเงินเดือนสุดท้าย (${money(lastSalary)} บาท)
+    <div class="gp-total">รวมประมาณ ${money(total)} บาท</div>
+    ${rows.length?`<div class="hscroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table><thead><tr><th>ผู้รับผลประโยชน์</th><th>สัดส่วน</th><th>จำนวนเงินโดยประมาณ</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.pct}%</td><td>${money(total*r.pct/100)} บาท</td></tr>`).join('')}
+    </tbody></table></div>`:''}
+    <div class="gp-note">* เป็นการประมาณการเบื้องต้นจากเงินเดือนล่าสุดในระบบและอายุงานปัจจุบันเท่านั้น ยอดจริงจะคำนวณโดยฝ่ายบุคคลในหน้า "ค่าตอบแทนเงินบำเหน็จ" ณ วันที่เกิดเหตุจริง และอาจมีการหักภาษี/ปัดเศษปีตามระเบียบ</div>
+  </div>`;
+}
+function addBeneficiaryRow(data){
+  data=data||{};
+  const wrap=document.getElementById('beneficiaryRows');
+  const div=document.createElement('div');
+  div.className='ben-row';
+  div.innerHTML=`
+    <input type="text" placeholder="ชื่อ-นามสกุล" class="ben-name" value="${esc(data.name||'')}">
+    <input type="text" placeholder="ความสัมพันธ์" class="ben-rel" value="${esc(data.relationship||'')}">
+    <input type="text" placeholder="เลขบัตรประชาชน" class="ben-idcard" value="${esc(data.id_card||'')}">
+    <input type="text" placeholder="เบอร์โทร" class="ben-phone" value="${esc(data.phone||'')}">
+    <input type="number" placeholder="%" class="ben-pct" value="${data.percentage!=null?data.percentage:''}" min="0" max="100" oninput="updateBenTotal()">
+    <button class="ben-remove" onclick="this.parentElement.remove();updateBenTotal()" title="ลบแถวนี้">✕</button>`;
+  wrap.appendChild(div);
+}
+function updateBenTotal(){
+  const pcts=[...document.querySelectorAll('.ben-pct')].map(i=>parseFloat(i.value)||0);
+  const total=pcts.reduce((a,b)=>a+b,0);
+  const el=document.getElementById('benTotal');
+  if(!pcts.length){el.textContent='';return;}
+  el.textContent=`รวมสัดส่วน: ${total}% ${total===100?'✓':(total>100?'(เกิน 100%)':'(ยังไม่ครบ 100%)')}`;
+  el.className='ben-total '+(total===100?'ok':'bad');
+  if(currentStaff)renderGratuityPreview();
+}
+function getCurrentBeneficiaryRows(){
+  return[...document.querySelectorAll('.ben-row')].map((row,i)=>({
+    name:row.querySelector('.ben-name').value.trim(),
+    relationship:row.querySelector('.ben-rel').value.trim(),
+    id_card:row.querySelector('.ben-idcard').value.trim(),
+    phone:row.querySelector('.ben-phone').value.trim(),
+    percentage:parseFloat(row.querySelector('.ben-pct').value)||0,
+    order_no:i+1,
+  })).filter(b=>b.name);
+}
+
+async function loadSalaryTab(){
+  const now=new Date();
+  const yearBE=now.getFullYear()+543,month=now.getMonth()+1;
+  const{data}=await sb.from('salary_records').select('*').eq('staff_id',currentStaff.id).eq('year_be',yearBE).eq('month',month).maybeSingle();
+  const content=document.getElementById('salaryContent');
+  if(!data){
+    content.innerHTML=`<div class="empty-state">ยังไม่มีข้อมูลเงินเดือนเดือน ${month}/${yearBE}</div>`;
+  }else{
+    const totalIncome=Number(data.base_salary||0)+Number(data.wage||0)+Number(data.ot_pay||0)+Number(data.per_diem||0)+Number(data.travel_fee||0)+Number(data.phochokho||0)+Number(data.backpay||0)+Number(data.commission||0)+Number(data.profession_fee||0);
+    const totalDeduct=Number(data.tax_withheld||0)+Number(data.social_security||0)+Number(data.leave_deduct||0)+Number(data.gsf_deduct||0)+Number(data.other_deduct||0);
+    const deductItems=[
+      ['ภาษีหัก ณ ที่จ่าย',data.tax_withheld],['ประกันสังคม',data.social_security],
+      ['หักเงินลา',data.leave_deduct],['เงินกู้ กยศ.',data.gsf_deduct],['หักอื่นๆ',data.other_deduct],
+    ].filter(([,v])=>Number(v||0)!==0);
+    content.innerHTML=`
+      <div class="salary-strip">
+        <div class="salary-chip"><div class="lbl">เงินเดือนพื้นฐาน</div><div class="val">${money(data.base_salary)}</div></div>
+        <div class="salary-chip"><div class="lbl">รวมรายได้</div><div class="val">${money(totalIncome)}</div></div>
+        <div class="salary-chip"><div class="lbl">รวมรายการหัก</div><div class="val">${money(totalDeduct)}</div></div>
+        <div class="salary-chip net"><div class="lbl">เงินได้สุทธิ</div><div class="val">${money(data.net_salary)}</div></div>
+      </div>
+      ${deductItems.length?`<div style="margin-top:10px;background:#fef2f2;border-radius:8px;padding:10px 14px;font-size:13px">
+        <div style="font-weight:600;color:#991b1b;margin-bottom:4px">รายการหักทั้งหมด</div>
+        ${deductItems.map(([n,v])=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#7f1d1d">${n}</span><span>${money(v)} บาท</span></div>`).join('')}
+      </div>`:''}`;
+  }
+  await loadPayslipGate(yearBE,month);
+  await loadPayslipHistory();
+}
+
+async function loadPayslipHistory(){
+  const wrap=document.getElementById('payslipHistoryContent');
+  // ดึงข้อมูลย้อนหลังประมาณ 12 เดือน (ครอบคลุมกรณีข้ามปี พ.ศ.)
+  const now=new Date();
+  const months=[];
+  for(let i=0;i<12;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({yearBE:d.getFullYear()+543,month:d.getMonth()+1});
+  }
+  const minYearBE=Math.min(...months.map(m=>m.yearBE));
+  const{data,error}=await sb.from('salary_records').select('*').eq('staff_id',currentStaff.id).gte('year_be',minYearBE).order('year_be',{ascending:false}).order('month',{ascending:false});
+  if(error){wrap.innerHTML=`<div class="empty-state">โหลดประวัติสลิปไม่สำเร็จ: ${esc(error.message)}</div>`;return;}
+  const monthKeySet=new Set(months.map(m=>m.yearBE+'-'+m.month));
+  const rows=(data||[]).filter(r=>monthKeySet.has(r.year_be+'-'+r.month));
+  if(!rows.length){wrap.innerHTML='<div class="empty-state">ยังไม่มีประวัติสลิปเงินเดือนในช่วง 12 เดือนล่าสุด</div>';return;}
+  const thMonths=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  wrap.innerHTML=`<div class="hscroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="payslip-history-table"><thead><tr><th>เดือน/ปี</th><th style="text-align:right">รายได้รวม</th><th style="text-align:right">หักภาษี</th><th style="text-align:right">ประกันสังคม</th><th style="text-align:right">สุทธิ</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>{
+      const totalIncome=Number(r.base_salary||0)+Number(r.wage||0)+Number(r.ot_pay||0)+Number(r.per_diem||0)+Number(r.travel_fee||0)+Number(r.phochokho||0)+Number(r.backpay||0)+Number(r.commission||0)+Number(r.profession_fee||0);
+      return `<tr>
+        <td>${thMonths[r.month]||r.month} ${r.year_be}</td>
+        <td style="text-align:right">${money(totalIncome)}</td>
+        <td style="text-align:right">${money(r.tax_withheld)}</td>
+        <td style="text-align:right">${money(r.social_security)}</td>
+        <td style="text-align:right;font-weight:600;color:#16a34a">${money(r.net_salary)}</td>
+        <td><a class="ph-link" href="javascript:void(0)" onclick='openSlipModal(${JSON.stringify(r).replace(/'/g,"&#39;")})'>ดูสลิป ↗</a></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+}
+
+const thMonthsFull=['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const LOGO='data:image/png;base64,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';
+let currentSlipRecord=null;
+function openSlipModal(r){
+  currentSlipRecord=r;
+  const s=currentStaff;
+  const dept=s.department||'-';
+  const idCardFmt=s.id_card&&s.id_card.length===13?s.id_card[0]+'-'+s.id_card.slice(1,5)+'-'+s.id_card.slice(5,10)+'-'+s.id_card.slice(10,12)+'-'+s.id_card[12]:(s.id_card||'-');
+  const periodTH=(thMonthsFull[r.month]||'')+' '+(r.year_be||'');
+
+  const incomeItems=[
+    ['เงินเดือน',r.base_salary],['ค่าตอบแทน',r.wage],['ค่าล่วงเวลา',r.ot_pay],
+    ['เบี้ยเลี้ยง',r.per_diem],['เดินทาง',r.travel_fee],['พ.ช.ค.',r.phochokho],
+    ['ตกเบิก',r.backpay],['คอมมิชชั่น/ค่าบริการ',r.commission],['ค่าวิชาชีพ',r.profession_fee],
+  ].filter(x=>Number(x[1])>0);
+  const deductItems=[
+    ['ภาษีหัก ณ ที่จ่าย',r.tax_withheld],['ประกันสังคม',r.social_security],
+    ['หักวันลา',r.leave_deduct],['กยศ.',r.gsf_deduct],['หักอื่นๆ',r.other_deduct],
+  ].filter(x=>Number(x[1])>0);
+  const rowsN=Math.max(incomeItems.length,deductItems.length,4);
+  let incomeRows='',deductRows='';
+  for(let i=0;i<rowsN;i++){
+    incomeRows+=incomeItems[i]?`<div class="slip-item"><span class="iname">${esc(incomeItems[i][0])}</span><span class="amount">${money(incomeItems[i][1])}</span></div>`:'<div class="slip-item">&nbsp;</div>';
+    deductRows+=deductItems[i]?`<div class="slip-item"><span class="iname">${esc(deductItems[i][0])}</span><span class="amount">${money(deductItems[i][1])}</span></div>`:'<div class="slip-item">&nbsp;</div>';
+  }
+  const totalIncome=Number(r.base_salary||0)+Number(r.wage||0)+Number(r.ot_pay||0)+Number(r.per_diem||0)+Number(r.travel_fee||0)+Number(r.phochokho||0)+Number(r.backpay||0)+Number(r.commission||0)+Number(r.profession_fee||0);
+  const totalDeduct=Number(r.tax_withheld||0)+Number(r.social_security||0)+Number(r.leave_deduct||0)+Number(r.gsf_deduct||0)+Number(r.other_deduct||0);
+
+  document.getElementById('slipModalTitle').textContent=`สลิปเงินเดือน — ${periodTH}`;
+  document.getElementById('printSlipArea').innerHTML=`
+    <div class="slip-wrap">
+      <div class="slip-watermark"></div>
+      <div class="slip-header">
+        <img class="slip-logo" src="${LOGO}" alt="โลโก้">
+        <div class="slip-org">
+          <div class="th-name">มูลนิธิส่งเสริมศิลปาชีพ ในสมเด็จพระนางเจ้าสิริกิติ์<br>พระบรมราชินีนาถ พระบรมราชชนนีพันปีหลวง</div>
+          <div class="en-name">THE FOUNDATION FOR THE PROMOTION OF<br>SUPPLEMENTARY OCCUPATIONS AND RELATED TECHNIQUES<br>OF HER MAJESTY QUEEN SIRIKIT, THE QUEEN MOTHER</div>
+        </div>
+        <div class="slip-title">ใบแจ้งเงินเดือน<br><span style="font-size:11px;font-weight:500;letter-spacing:1.5px">PAY SLIP</span></div>
+      </div>
+      <div class="slip-info">
+        <div class="slip-info-col">
+          <div class="slip-info-row"><span class="lbl">รหัสเจ้าหน้าที่ EMP.NO.</span><span class="val">${esc(s.employee_code||'-')}</span></div>
+          <div class="slip-info-row"><span class="lbl">ชื่อ / NAME</span><span class="val">${esc((s.prefix||'')+s.first_name+' '+s.last_name)}</span></div>
+          <div class="slip-info-row"><span class="lbl">สังกัด SECT./DEPT.</span><span class="val">${esc(dept)}</span></div>
+        </div>
+        <div class="slip-info-col">
+          <div class="slip-info-row"><span class="lbl">ประจำงวด FOR PERIOD</span><span class="val">${esc(periodTH)}</span></div>
+          <div class="slip-info-row"><span class="lbl">เลขประจำตัวผู้เสียภาษี</span><span class="val">${esc(idCardFmt)}</span></div>
+          <div class="slip-info-row"><span class="lbl">เลขที่บัญชี ACCOUNT NO.</span><span class="val">${esc(s.bank_account||'-')}</span></div>
+        </div>
+      </div>
+      <div class="slip-body">
+        <div><div class="slip-col-header">รายการได้ INCOME</div><div class="slip-items">${incomeRows}</div></div>
+        <div class="slip-divider"></div>
+        <div><div class="slip-col-header">รายการหัก DEDUCTION</div><div class="slip-items">${deductRows}</div></div>
+      </div>
+      <div class="slip-body">
+        <div class="slip-subtotal"><span>รวมรายได้ TOTAL INCOME</span><span>${money(totalIncome)} บาท BAHT</span></div>
+        <div class="slip-divider"></div>
+        <div class="slip-subtotal"><span>รวมรายจ่าย TOTAL DEDUCTION</span><span>${money(totalDeduct)} บาท BAHT</span></div>
+      </div>
+      <div class="slip-net"><span class="lbl">เงินได้สุทธิ NET INCOME</span><span class="val">${money(r.net_salary)} บาท BAHT</span></div>
+      <div class="slip-copy-badge">สำเนา / COPY</div>
+      <div class="slip-legal-footer">สลิปใบแจ้งเงินเดือนอิเล็กทรอนิกส์ฉบับสำเนา — ห้ามแก้ไข สำหรับตรวจสอบข้อมูลส่วนตัวเท่านั้น หากต้องการฉบับจริงเพื่อใช้ยื่นเอกสารราชการ กรุณาติดต่อฝ่ายบุคคลและสวัสดิการมูลนิธิ</div>
+    </div>`;
+  document.getElementById('slipModal').classList.add('open');
+}
+function closeSlipModal(){document.getElementById('slipModal').classList.remove('open');currentSlipRecord=null;}
+
+async function downloadCurrentSlipPdf(){
+  if(!currentSlipRecord){showToast('ไม่พบข้อมูลสลิป',true);return;}
+  const btn=document.getElementById('empDownloadPdfBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังสร้าง PDF...';}
+  try{
+    const slipEl=document.querySelector('#printSlipArea .slip-wrap');
+    const canvas=await html2canvas(slipEl,{scale:4,useCORS:true,backgroundColor:'#ffffff'});
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    const pageW=210,pageH=297;
+    const imgW=pageW-20;
+    const imgH=imgW*canvas.height/canvas.width;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',10,20,imgW,Math.min(imgH,pageH-30));
+    const periodTxt=(thMonthsFull[currentSlipRecord.month]||'')+'_'+currentSlipRecord.year_be;
+    pdf.save(`สลิปเงินเดือน_${(currentStaff.employee_code||'')}_${periodTxt}.pdf`);
+  }catch(e){
+    showToast('สร้าง PDF ไม่สำเร็จ: '+e.message,true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='📥 ดาวน์โหลด PDF (A4)';}
+  }
+}
+
+function openPasswordGate(){
+  document.getElementById('pwGatePassword').value='';
+  document.getElementById('pwGateErr').textContent='';
+  document.getElementById('passwordGateModal').classList.add('open');
+  setTimeout(()=>document.getElementById('pwGatePassword').focus(),100);
+}
+function closePasswordGate(){document.getElementById('passwordGateModal').classList.remove('open');}
+async function submitPasswordGate(){
+  const pw=document.getElementById('pwGatePassword').value;
+  const errEl=document.getElementById('pwGateErr');
+  const btn=document.getElementById('pwGateSubmitBtn');
+  errEl.textContent='';
+  if(!pw){errEl.textContent='กรุณากรอกรหัสผ่าน';return;}
+  btn.disabled=true;btn.textContent='⏳ กำลังตรวจสอบ...';
+  try{
+    // ยืนยันตัวตนซ้ำด้วยอีเมลของผู้ใช้ที่ล็อกอินอยู่ + รหัสผ่านที่กรอกใหม่ (re-authentication)
+    // การเรียกนี้จะไม่ทำการ sign-in ทับ session เดิม เพราะ Supabase คืนค่า session ใหม่ให้กับ user เดียวกัน
+    const{error}=await sb.auth.signInWithPassword({email:currentUser.email,password:pw});
+    if(error){
+      errEl.textContent='รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+      return;
+    }
+    closePasswordGate();
+    document.getElementById('salaryLockGate').style.display='none';
+    document.getElementById('salaryUnlockedContent').style.display='block';
+    await loadSalaryTab();
+    showToast('ยืนยันตัวตนสำเร็จ');
+  }catch(e){
+    errEl.textContent='เกิดข้อผิดพลาด: '+e.message;
+  }finally{
+    btn.disabled=false;btn.textContent='✓ ยืนยัน';
+  }
+}
+
+async function computeLastWorkingDay(month,yearBE){
+  const yearAD=yearBE-543;
+  let d=new Date(yearAD,month,0);
+  const{data:holidays}=await sb.from('holidays').select('holiday_date').is('department',null);
+  const holidaySet=new Set((holidays||[]).map(h=>h.holiday_date));
+  const iso=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  while(d.getDay()===0||d.getDay()===6||holidaySet.has(iso(d))){d.setDate(d.getDate()-1);}
+  return d;
+}
+async function loadPayslipGate(yearBE,month){
+  const gate=document.getElementById('payslipGateContent');
+  const payDate=await computeLastWorkingDay(month,yearBE);
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  payDate.setHours(0,0,0,0);
+  const payDateStr=payDate.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+  if(today>=payDate){
+    gate.innerHTML=`<div class="payslip-ready">✅ ถึงวันจ่ายเงินเดือนแล้ว (${payDateStr}) — ดูรายละเอียดได้ที่แท็บ "เงินเดือน" ด้านบน หรือติดต่อฝ่ายบุคคลเพื่อขอสลิปฉบับ PDF</div>`;
+  }else{
+    gate.innerHTML=`<div class="payslip-gate">🔒 สลิปเงินเดือนเดือนนี้จะแสดงในวันที่ ${payDateStr} (วันจ่ายเงินเดือน) — ตอนนี้ยังไม่ถึงกำหนด</div>`;
+  }
+}
+
+async function loadAppraisalTab(){
+  const nowYearBE=new Date().getFullYear()+543;
+  const{data,error}=await sb.from('staff_appraisals').select('*').eq('staff_id',currentStaff.id).gte('year_be',nowYearBE-3).order('year_be',{ascending:false});
+  const content=document.getElementById('appraisalContent');
+  if(error){content.innerHTML=`<div class="empty-state">ยังไม่พบตาราง staff_appraisals — กรุณารัน SQL part2 ก่อน</div>`;return;}
+  if(!data||!data.length){content.innerHTML='<div class="empty-state">ยังไม่มีข้อมูลผลการประเมิน (รอฝ่ายบุคคลบันทึกผล)</div>';return;}
+  content.innerHTML=data.map(a=>`
+    <div class="appraisal-card">
+      <span class="appraisal-year">ปี ${a.year_be}</span>${a.rating?`<span class="appraisal-rating">${esc(a.rating)}</span>`:''}
+      ${a.score!=null?`<span style="margin-left:8px;color:#64748b;font-size:13px">คะแนน: ${a.score}</span>`:''}
+      ${a.evaluator_name?`<div style="font-size:11.5px;color:#94a3b8;margin-top:4px">ผู้ประเมิน: ${esc(a.evaluator_name)}</div>`:''}
+      ${a.comments?`<div class="appraisal-comments">${esc(a.comments)}</div>`:''}
+    </div>`).join('');
+}
+
+async function checkPendingRequest(){
+  const{data}=await sb.from('staff_edit_requests').select('*').eq('staff_id',currentStaff.id).eq('status','pending').maybeSingle();
+  currentPendingRequest=data||null;
+  const banner=document.getElementById('pendingBanner');
+  const btn=document.getElementById('submitBtn');
+  if(data){
+    const changedFields=Object.keys(data.changes||{}).map(k=>k==='beneficiaries'?'ผู้รับผลประโยชน์':(data.changes[k].label||k)).join(', ');
+    banner.innerHTML=`<div class="pending-banner"><strong>⏳ มีคำขอแก้ไขที่รอการอนุมัติอยู่</strong>ส่งคำขอเมื่อ ${new Date(data.created_at).toLocaleString('th-TH')} — รายการที่ขอแก้ไข: ${esc(changedFields)}<br>กรุณารอหัวหน้าหน่วยงานอนุมัติก่อน จึงจะส่งคำขอใหม่ได้ หรือยกเลิกคำขอนี้เพื่อแก้ไขใหม่<br>
+      <button class="cancel-req-btn" style="margin-left:0;margin-top:8px" onclick="cancelPendingRequest('${data.id}')">✕ ยกเลิกคำขอนี้</button></div>`;
+    banner.style.display='block';
+    btn.disabled=true;
+  }else{
+    banner.style.display='none';
+    btn.disabled=false;
+  }
+  return data||null;
+}
+
+async function cancelPendingRequest(id){
+  if(!confirm('ต้องการยกเลิกคำขอแก้ไขข้อมูลนี้ใช่หรือไม่? ข้อมูลที่กรอกไว้ในคำขอจะถูกลบทิ้ง'))return;
+  const{error}=await sb.from('staff_edit_requests').delete().eq('id',id).eq('status','pending');
+  if(error){showToast('ยกเลิกคำขอไม่สำเร็จ: '+error.message,true);return;}
+  showToast('ยกเลิกคำขอสำเร็จ');
+  currentPendingRequest=null;
+  await renderProfile();
+}
+
+async function loadHistory(){
+  const{data,error}=await sb.from('staff_edit_requests').select('*').eq('staff_id',currentStaff.id).order('created_at',{ascending:false}).limit(10);
+  const wrap=document.getElementById('historyWrap');
+  if(error){wrap.innerHTML=`<div class="empty-state">โหลดประวัติไม่สำเร็จ: ${esc(error.message)}</div>`;return;}
+  if(!data||!data.length){wrap.innerHTML='<div class="empty-state">ยังไม่มีประวัติการขอแก้ไขข้อมูล</div>';return;}
+  const statusText={pending:'รอตรวจสอบ',approved:'อนุมัติแล้ว',rejected:'ปฏิเสธ'};
+  const statusCls={pending:'status-pending',approved:'status-approved',rejected:'status-rejected'};
+  wrap.innerHTML=`<div class="hscroll-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="history-table"><thead><tr><th>วันที่ยื่น</th><th>รายการที่แก้ไข</th><th>สถานะ</th><th>หมายเหตุ</th><th></th></tr></thead><tbody>
+    ${data.map(r=>{
+      const fields=Object.keys(r.changes||{}).map(k=>k==='beneficiaries'?'ผู้รับผลประโยชน์':(r.changes[k].label||k)).join(', ');
+      const cancelCell=r.status==='pending'?`<button class="cancel-req-btn" onclick="cancelPendingRequest('${r.id}')">✕ ยกเลิก</button>`:'';
+      return `<tr><td>${new Date(r.created_at).toLocaleDateString('th-TH')}</td><td>${esc(fields)}</td><td><span class="status-pill ${statusCls[r.status]}">${statusText[r.status]}</span></td><td>${esc(r.reject_reason||'-')}</td><td>${cancelCell}</td></tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+}
+
+async function submitEditRequest(){
+  const changes={};
+  editableFields.filter(f=>f.field_name!=='photo_url'&&f.requires_approval&&['basic','address','personal'].includes(f.category)).forEach(f=>{
+    const el=document.getElementById('f_'+f.field_name);
+    if(!el)return;
+    const newVal=el.value.trim();
+    const oldVal=currentStaff[f.field_name]||'';
+    if(newVal!==oldVal){
+      changes[f.field_name]={old:oldVal,new:newVal,label:f.label_th};
+    }
+  });
+
+  const newBeneficiaries=getCurrentBeneficiaryRows();
+  const oldBenSimplified=originalBeneficiaries.map((b,i)=>({name:b.name||'',relationship:b.relationship||'',id_card:b.id_card||'',phone:b.phone||'',percentage:b.percentage||0,order_no:i+1}));
+  if(JSON.stringify(newBeneficiaries)!==JSON.stringify(oldBenSimplified)){
+    changes.beneficiaries={old:oldBenSimplified,new:newBeneficiaries,label:'ผู้รับผลประโยชน์'};
+  }
+
+  if(!Object.keys(changes).length){showToast('ไม่มีข้อมูลที่เปลี่ยนแปลง',true);return;}
+
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.textContent='กำลังส่งคำขอ...';
+  try{
+    const{error}=await sb.from('staff_edit_requests').insert({
+      staff_id:currentStaff.id,
+      requested_by:previewMode?null:currentUser.id,
+      department:currentStaff.department,
+      changes,
+      status:'pending',
+    });
+    if(error)throw error;
+    showToast('ส่งคำขอแก้ไขสำเร็จ — รอหัวหน้าหน่วยงานอนุมัติ');
+    await checkPendingRequest();
+    await loadHistory();
+  }catch(err){
+    showToast('ส่งคำขอไม่สำเร็จ: '+err.message,true);
+  }finally{
+    btn.textContent='📤 ส่งคำขอแก้ไขข้อมูล';
+  }
+}
+
+function loadProfile(){renderProfile();}
+
+function handlePhotoSelect(e){
+  const file=e.target.files[0];
+  if(!file||!currentStaff)return;
+  const status=document.getElementById('photoStatus');
+  status.textContent='กำลังย่อรูป...';
+  const img=new Image();
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    img.onload=async()=>{
+      const targetW=450,targetH=600;
+      const canvas=document.createElement('canvas');
+      canvas.width=targetW;canvas.height=targetH;
+      const ctx=canvas.getContext('2d');
+      const scale=Math.max(targetW/img.width,targetH/img.height);
+      const sw=targetW/scale,sh=targetH/scale;
+      const sx=(img.width-sw)/2,sy=(img.height-sh)/2;
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,targetW,targetH);
+      let quality=0.9;
+      let blob=await new Promise(res=>canvas.toBlob(res,'image/jpeg',quality));
+      while(blob&&blob.size>2*1024*1024&&quality>0.3){quality-=0.1;blob=await new Promise(res=>canvas.toBlob(res,'image/jpeg',quality));}
+      if(!blob){status.textContent='ย่อรูปไม่สำเร็จ';return;}
+      status.textContent=`กำลังอัปโหลด... (${Math.round(blob.size/1024)}KB)`;
+      const path=`${currentStaff.id}.jpg`;
+      const{error}=await sb.storage.from('staff-photos').upload(path,blob,{upsert:true,contentType:'image/jpeg'});
+      if(error){status.textContent='อัปโหลดไม่สำเร็จ: '+error.message;showToast('อัปโหลดรูปไม่สำเร็จ: '+error.message,true);return;}
+      const{data:pub}=sb.storage.from('staff-photos').getPublicUrl(path);
+      const url=pub.publicUrl+'?t='+Date.now();
+      const{error:updErr}=await sb.from('staff').update({photo_url:url}).eq('id',currentStaff.id);
+      if(updErr){status.textContent='บันทึกไม่สำเร็จ: '+updErr.message;return;}
+      currentStaff.photo_url=url;
+      document.getElementById('photoImg').src=url;
+      document.getElementById('photoImg').style.display='block';
+      document.getElementById('photoPlaceholder').style.display='none';
+      status.textContent=`✓ อัปเดตรูปสำเร็จ`;
+      showToast('อัปเดตรูปถ่ายสำเร็จ');
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+(async function init(){
+  startLiveClock();
+  const ok=await authGuard();if(!ok)return;
+  renderWebauthnStatus();
+  await loadEditableFieldsConfig();
+
+  const linked=await findMyStaffRecord();
+  if(linked){
+    currentStaff=linked;
+    await renderProfile();
+  }else if(currentProfile.role==='super'||currentProfile.role==='unit'){
+    await enterPreviewMode();
+    document.getElementById('noRecordView').style.display='block';
+  }else{
+    // ผู้ใช้นี้ไม่ใช่แอดมิน และไม่มีข้อมูลเจ้าหน้าที่ที่เชื่อมโยงไว้ — ห้ามเข้าโหมด Preview (เดิมเป็นช่องโหว่ให้เห็นข้อมูลเจ้าหน้าที่ทุกคนได้)
+    document.getElementById('noRecordView').innerHTML='<div class="no-record"><div class="icon">🔒</div><p>บัญชีนี้ยังไม่ได้เชื่อมโยงกับข้อมูลเจ้าหน้าที่ กรุณาติดต่อฝ่ายบุคคล</p></div>';
+    document.getElementById('noRecordView').style.display='block';
+  }
+})();
+// ============================================================
+// ตัวช่วยพิมพ์ค้นหาเจ้าหน้าที่ในดรอปดาวน์ (ไม่ย้าย/ไม่ครอบ DOM เดิมเลย กันชนกับโครงสร้างหน้าเว็บเดิม)
+// ============================================================
+function enhanceStaffSelect(selectId){
+  const sel=document.getElementById(selectId);
+  if(!sel||sel.dataset.enhanced)return;
+  sel.dataset.enhanced='1';
+  // ซ่อน select เดิมแบบไม่กระทบตำแหน่งใน DOM เลย (อยู่ที่เดิม ไม่ย้าย ไม่สร้าง wrapper ครอบ)
+  sel.style.position='absolute';sel.style.opacity='0';sel.style.pointerEvents='none';
+  sel.style.height='1px';sel.style.width='1px';sel.style.overflow='hidden';sel.setAttribute('tabindex','-1');
+
+  const container=document.createElement('div');
+  container.style.cssText='position:relative;width:100%';
+  sel.insertAdjacentElement('afterend',container);
+
+  // สร้างช่องค้นหาใหม่ทั้งหมดจากศูนย์ ไม่คัดลอกสไตล์จาก select เดิมเลย (กันสไตล์ซ่อนหลุดติดมาด้วยแบบที่เคยเกิดบั๊ก)
+  const input=document.createElement('input');
+  input.type='text';input.placeholder='พิมพ์ค้นหาชื่อ/รหัสเจ้าหน้าที่...';input.autocomplete='off';
+  input.style.cssText='display:block;width:100%;box-sizing:border-box;cursor:text;background:#fff;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:inherit;color:#1a1a1a;opacity:1;position:static;pointer-events:auto;height:auto';
+
+  const resultsBox=document.createElement('div');
+  resultsBox.style.cssText='display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid #cbd5e1;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:1000;margin-top:2px';
+
+  container.appendChild(input);container.appendChild(resultsBox);
+
+  function getOptions(){return[...sel.options].filter(o=>o.value);}
+  function syncInputFromSelect(){const opt=sel.options[sel.selectedIndex];input.value=(opt&&opt.value)?opt.textContent:'';}
+  syncInputFromSelect();
+
+  function renderResults(query){
+    const q=query.trim().toLowerCase();
+    const opts=getOptions();
+    const filtered=q?opts.filter(o=>o.textContent.toLowerCase().includes(q)):opts;
+    resultsBox.innerHTML=filtered.length?filtered.slice(0,200).map(o=>`<div class="ss-opt" data-value="${o.value.replace(/"/g,'&quot;')}" style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f1f5f9">${o.textContent}</div>`).join(''):'<div style="padding:10px;color:#94a3b8;font-size:13px">ไม่พบรายชื่อที่ตรงกับคำค้นหา</div>';
+    resultsBox.style.display='block';
+  }
+  input.addEventListener('focus',()=>renderResults(input.value));
+  input.addEventListener('input',()=>renderResults(input.value));
+  input.addEventListener('blur',()=>{setTimeout(()=>{resultsBox.style.display='none';syncInputFromSelect();},150);});
+  resultsBox.addEventListener('mousedown',e=>{
+    const item=e.target.closest('.ss-opt');if(!item)return;e.preventDefault();
+    sel.value=item.dataset.value;input.value=item.textContent;resultsBox.style.display='none';
+    sel.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  const origDescriptor=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value');
+  Object.defineProperty(sel,'value',{
+    get(){return origDescriptor.get.call(sel);},
+    set(v){origDescriptor.set.call(sel,v);syncInputFromSelect();}
+  });
+}
+// เรียกใช้งานกับดรอปดาวน์ที่ต้องการ
+enhanceStaffSelect('previewStaffSelect');
+
+// ============================================================
+// กระดิ่งแจ้งเตือนรวมศูนย์ (เพิ่มโดย Claude)
+// ทำงานแบบอิสระ ไม่พึ่งชื่อตัวแปรของแต่ละหน้า (เพราะแต่ละไฟล์ตั้งชื่อตัวแปร currentUser/currentProfile ไม่ตรงกัน
+// บางไฟล์ถึงกับไม่มีตัวแปรเหล่านี้เลย เช่น dashboard.html) — ดึง session/role/department ของตัวเองโดยตรง
+// ============================================================
+let ntfUser = null, ntfRole = null, ntfDept = null, ntfList = [], ntfChannel = null;
+
+function ntfSb() {
+  if (typeof sb !== 'undefined' && sb) return sb;
+  if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+  return null;
+}
+
+async function ntfWaitForAuth() {
+  const client = ntfSb();
+  if (!client) { setTimeout(ntfWaitForAuth, 400); return; }
+  try {
+    const { data } = await client.auth.getSession();
+    if (!data || !data.session) { setTimeout(ntfWaitForAuth, 400); return; }
+    ntfUser = data.session.user;
+    const { data: profile } = await client.from('profiles').select('role,department').eq('id', ntfUser.id).maybeSingle();
+    if (profile) { ntfRole = profile.role; ntfDept = profile.department; }
+  } catch (e) { setTimeout(ntfWaitForAuth, 800); return; }
+  ntfInit();
+}
+
+async function ntfInit() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  await ntfLoad();
+  if (ntfChannel) return; // กันสมัคร realtime ซ้ำ
+  ntfChannel = client.channel('ntf-bell-' + ntfUser.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .subscribe();
+  setInterval(ntfLoad, 60000); // รีเฟรชสำรองทุก 1 นาที เผื่อ realtime หลุดหรือพลาดไป
+}
+
+async function ntfLoad() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  // ระบบเดิมเคยใช้ชื่อคอลัมน์ recipient_department/recipient_user_id มาก่อน ส่วนที่เพิ่มใหม่ใช้ department/recipient_id
+  // ดึงแบบครอบคลุมทั้ง 2 แบบไว้ก่อน แล้วค่อยกรองซ้ำอีกทีฝั่ง JS ให้แม่นยำ
+  const orParts = [`recipient_id.eq.${ntfUser.id}`, `recipient_user_id.eq.${ntfUser.id}`];
+  if (ntfRole) orParts.push(`recipient_role.eq.${ntfRole}`);
+  if (ntfDept) orParts.push(`recipient_department.eq.${encodeURIComponent(ntfDept)}`);
+  const { data, error } = await client.from('notifications').select('*').or(orParts.join(',')).order('created_at', { ascending: false }).limit(40);
+  if (error) return; // เงียบไว้ ไม่รบกวนผู้ใช้ถ้าตารางยังไม่พร้อม (เช่น ยังไม่ได้รัน migration)
+  ntfList = (data || []).filter(n => {
+    if (n.recipient_id === ntfUser.id || n.recipient_user_id === ntfUser.id) return true;
+    const scopedDept = n.department || n.recipient_department || null;
+    if (n.recipient_role) {
+      if (n.recipient_role !== ntfRole) return false;
+      if (scopedDept && ntfRole !== 'super' && scopedDept !== ntfDept) return false;
+      return true;
+    }
+    if (scopedDept && (ntfRole === 'unit' || ntfRole === 'super')) {
+      return ntfRole === 'super' || scopedDept === ntfDept;
+    }
+    return false;
+  });
+  ntfRenderBadge();
+  if (document.getElementById('ntfPanel')?.classList.contains('open')) ntfRenderList();
+}
+
+function ntfRenderBadge() {
+  const unread = ntfList.filter(n => !n.is_read).length;
+  document.querySelectorAll('.ntf-badge').forEach(b => {
+    b.textContent = unread > 99 ? '99+' : unread;
+    b.classList.toggle('show', unread > 0);
+  });
+}
+
+function ntfTimeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'เมื่อสักครู่';
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ชั่วโมงที่แล้ว`;
+  const d = Math.floor(hr / 24);
+  if (d < 7) return `${d} วันที่แล้ว`;
+  return new Date(iso).toLocaleDateString('th-TH');
+}
+
+function ntfEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+function ntfRenderList() {
+  const wrap = document.getElementById('ntfList');
+  if (!wrap) return;
+  if (!ntfList.length) { wrap.innerHTML = '<div class="ntf-empty">📭 ไม่มีการแจ้งเตือน</div>'; return; }
+  wrap.innerHTML = ntfList.slice(0, 30).map(n => `
+    <button class="ntf-item ${n.is_read ? '' : 'unread'}" onclick="ntfClickItem('${n.id}', ${n.link ? `'${ntfEsc(n.link)}'` : 'null'})">
+      <div class="ntf-item-title">${n.is_read ? '' : '<span class="ntf-dot"></span>'}${ntfEsc(n.title || 'แจ้งเตือน')}</div>
+      <div class="ntf-item-msg">${ntfEsc(n.message || '')}</div>
+      <div class="ntf-item-time">${ntfTimeAgo(n.created_at)}</div>
+    </button>
+  `).join('');
+}
+
+function ntfToggle(e) {
+  e && e.stopPropagation();
+  const panel = document.getElementById('ntfPanel');
+  if (!panel) return;
+  const willOpen = !panel.classList.contains('open');
+  document.querySelectorAll('.ntf-panel.open').forEach(p => p.classList.remove('open'));
+  if (willOpen) { panel.classList.add('open'); ntfRenderList(); }
+}
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('ntfPanel');
+  if (panel && panel.classList.contains('open') && !e.target.closest('.ntf-wrap')) panel.classList.remove('open');
+});
+
+async function ntfClickItem(id, link) {
+  const client = ntfSb();
+  const item = ntfList.find(n => n.id === id);
+  if (item && !item.is_read && client) {
+    item.is_read = true;
+    await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
+    ntfRenderBadge();
+  }
+  if (link) window.location.href = link;
+}
+
+async function ntfMarkAllRead() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  const unreadIds = ntfList.filter(n => !n.is_read).map(n => n.id);
+  if (!unreadIds.length) return;
+  ntfList.forEach(n => n.is_read = true);
+  ntfRenderBadge(); ntfRenderList();
+  await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', unreadIds);
+}
+
+ntfWaitForAuth();
+</script>
+</body>
+</html>

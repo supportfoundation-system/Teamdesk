@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a5fa8">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  });
+}
+</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ประกันสุขภาพและอุบัติเหตุกลุ่ม — HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',Arial,sans-serif}
+    body{background:#f4f6f9;color:#333;overflow:hidden;height:100vh}
+    .topbar{position:fixed;top:0;left:0;right:0;height:60px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;padding:0 24px;z-index:1000}
+    .topbar-left{display:flex;align-items:center;gap:12px}
+    .logo-img{height:40px;width:auto;object-fit:contain}
+    .system-title{font-size:16px;font-weight:700;color:#2c3e50}
+    .topbar-divider{color:#ccc}
+    .current-time{font-size:14px;color:#666}
+    .topbar-right{display:flex;align-items:center;gap:16px}
+    .user-role{font-size:14px;font-weight:600;color:#0056b3;background:#e6f0fa;padding:4px 12px;border-radius:4px}
+    .user-name{font-size:14px;font-weight:500}
+    .btn-logout{background:#fff;border:1px solid #dc3545;color:#dc3545;padding:5px 12px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;transition:all .2s}
+    .btn-logout:hover{background:#dc3545;color:#fff}
+    .app-container{display:flex;padding-top:60px;height:100vh}
+    .sidebar{width:260px;background:#1e293b;color:#f8fafc;height:calc(100vh - 60px);overflow-y:auto;padding:20px 0;flex-shrink:0}
+    .menu-category{font-size:12px;font-weight:700;text-transform:uppercase;color:#64748b;padding:12px 24px 6px;letter-spacing:.5px}
+    .menu-item{display:flex;align-items:center;padding:10px 24px;color:#cbd5e1;text-decoration:none;font-size:14px;border-left:4px solid transparent;cursor:pointer}
+    .menu-item:hover,.menu-item.active{background:#334155;color:#fff;border-left-color:#3b82f6}
+    .menu-item span{margin-right:10px;font-size:16px}
+    .main-content{flex-grow:1;padding:28px 30px;overflow-y:auto;background:#f8fafc}
+    .hamburger-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;border:none;background:none;cursor:pointer;font-size:22px;color:#334155;flex-shrink:0;margin-right:2px}
+    .sidebar-backdrop{display:none;position:fixed;top:60px;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:998}
+    @media (max-width:1024px){
+      .hamburger-btn{display:flex}
+      .sidebar{position:fixed;top:60px;left:0;bottom:0;height:calc(100vh - 60px);transform:translateX(-100%);transition:transform .25s ease;z-index:999;box-shadow:4px 0 20px rgba(0,0,0,.15)}
+      .sidebar.open{transform:translateX(0)}
+      .sidebar-backdrop.show{display:block}
+      .system-title{display:none}
+      .topbar-divider{display:none}
+      .form-grid{grid-template-columns:1fr!important}
+    }
+    @media (max-width:640px){
+      .user-name{display:none}
+      .topbar{padding:0 10px}
+      .topbar-right{gap:8px}
+      .main-content{padding:12px}
+      h1{font-size:19px}
+      .toolbar{flex-direction:column;align-items:stretch}
+      .search-box{min-width:0}
+      .stat-strip{flex-direction:column}
+    }
+    .card{background:#fff;padding:20px 24px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:20px}
+    h1{font-size:24px;color:#1e293b;margin-bottom:6px}
+    .page-sub{color:#64748b;font-size:14px;margin-bottom:22px}
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+    .search-box{position:relative;flex:1;min-width:200px;max-width:320px}
+    .search-box input{width:100%;padding:8px 12px 8px 32px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif}
+    .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#94a3b8}
+    .select-box{padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:6px;font-size:13px;background:#fff;font-family:'Sarabun',sans-serif}
+    .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:opacity .15s;font-family:'Sarabun',sans-serif}
+    .btn:hover{opacity:.85}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn-primary{background:#0056b3;color:#fff}
+    .btn-success{background:#16a34a;color:#fff}
+    .btn-outline{background:#fff;color:#475569;border:1.5px solid #cbd5e1}
+    .btn-sm{padding:5px 12px;font-size:12px}
+    .stat-strip{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+    .stat-chip{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;font-size:13px;color:#475569}
+    .stat-chip strong{color:#0056b3;font-size:16px;margin-left:6px}
+    .table-scroll{overflow-x:auto}
+    table.data-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:13px}
+    .data-table thead tr{background:#f1f5f9}
+    .data-table th{padding:9px 12px;text-align:left;font-weight:700;color:#475569;font-size:12px;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+    .data-table td{padding:9px 12px;border-bottom:1px solid #f1f5f9;color:#334155;vertical-align:middle;white-space:nowrap}
+    .data-table tbody tr:hover{background:#f8fafc}
+    .status-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+    .status-active{background:#dcfce7;color:#16a34a}
+    .status-inactive{background:#fef3c7;color:#b45309}
+    .status-cancelled{background:#fee2e2;color:#dc2626}
+    .action-btn{padding:4px 10px;font-size:12px;border-radius:4px;cursor:pointer;border:1px solid;font-family:'Sarabun',sans-serif;font-weight:500;margin-right:4px}
+    .btn-edit{color:#0056b3;border-color:#93c5fd;background:#fff}.btn-edit:hover{background:#eff6ff}
+    .btn-del{color:#ef4444;border-color:#fca5a5;background:#fff}.btn-del:hover{background:#fef2f2}
+    .loading-state,.empty-state{text-align:center;padding:48px 20px;color:#94a3b8}
+    .loading-spinner{width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+    .empty-state .icon{font-size:40px;margin-bottom:10px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .no-access{text-align:center;padding:80px 20px;color:#94a3b8}
+    .no-access .icon{font-size:48px;margin-bottom:14px}
+    .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+    .toast{background:#1e293b;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:fadeIn .2s ease}
+    .toast.error{background:#dc2626}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:20px}
+    .modal-backdrop.open{display:flex}
+    .modal{background:#fff;border-radius:10px;width:680px;max-width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;background:#fff;z-index:5}
+    .modal-header h2{font-size:16px;font-weight:700;color:#1e293b}
+    .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8}
+    .modal-body{padding:20px 24px}
+    .modal-footer{padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:10px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-grid .full{grid-column:1/-1}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group label{font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.3px}
+    .form-group input,.form-group select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:4px;font-size:14px;font-family:'Sarabun',sans-serif}
+    .form-group input:focus,.form-group select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .ben-section{margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0}
+    .ben-row{display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 80px 32px;gap:8px;margin-bottom:8px;align-items:center}
+    .ben-row input,.ben-row select{padding:7px 8px;border:1px solid #cbd5e1;border-radius:4px;font-size:13px;font-family:'Sarabun',sans-serif}
+    .ben-remove{background:#fee2e2;color:#dc2626;border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:14px}
+    .ben-total{font-size:12.5px;font-weight:600;margin-top:6px}
+    .ben-total.ok{color:#16a34a}
+    .ben-total.bad{color:#dc2626}
+    .pagination{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+    .page-info{font-size:12.5px;color:#64748b}
+    .page-btn{padding:6px 12px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;font-size:12.5px;margin-left:6px;font-family:'Sarabun',sans-serif}
+    .page-btn:disabled{opacity:.4;cursor:not-allowed}
+    .note-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#1e40af;margin-bottom:16px;line-height:1.6}
+    .note-box.today{background:#fffbeb;border-color:#fde68a;color:#92400e;font-weight:600}
+  
+  /* ---------- กระดิ่งแจ้งเตือน (เพิ่มโดย Claude) ---------- */
+  .ntf-wrap{position:relative;display:inline-flex;align-items:center}
+  .ntf-bell-btn{position:relative;background:none;border:none;cursor:pointer;font-size:20px;padding:6px;line-height:1;border-radius:50%;transition:background .15s}
+  .ntf-bell-btn:hover{background:#f1f5f9}
+  .ntf-badge{position:absolute;top:-2px;right:-2px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;line-height:1;box-shadow:0 0 0 2px #fff}
+  .ntf-badge.show{display:flex}
+  .ntf-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:360px;max-width:88vw;max-height:70vh;overflow-y:auto;background:#fff;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.18);z-index:5000;border:1px solid #e2e8f0}
+  .ntf-panel.open{display:block}
+  .ntf-panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff}
+  .ntf-panel-header strong{font-size:14px;color:#1e293b}
+  .ntf-mark-all{background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer;font-family:inherit}
+  .ntf-mark-all:hover{text-decoration:underline}
+  .ntf-item{display:block;width:100%;text-align:left;padding:11px 14px;border:none;background:none;border-bottom:1px solid #f8fafc;cursor:pointer;font-family:inherit}
+  .ntf-item:hover{background:#f8fafc}
+  .ntf-item.unread{background:#eff6ff}
+  .ntf-item.unread:hover{background:#dbeafe}
+  .ntf-item-title{font-size:13px;color:#1e293b;font-weight:600;display:flex;align-items:center;gap:6px}
+  .ntf-dot{width:7px;height:7px;border-radius:50%;background:#2563eb;flex-shrink:0}
+  .ntf-item-msg{font-size:12.5px;color:#64748b;margin-top:3px;line-height:1.4}
+  .ntf-item-time{font-size:10.5px;color:#94a3b8;margin-top:4px}
+  .ntf-empty{padding:40px 20px;text-align:center;color:#94a3b8;font-size:13px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="เมนู">☰</button>
+    <img src="https://sydijbrkbfvjrcxhfrlo.supabase.co/storage/v1/object/public/Logo/LOGO.jpg" alt="โลโก้" class="logo-img">
+    <div class="system-title">HRIS - ระบบบริหารงานบุคคล มูลนิธิส่งเสริมศิลปาชีพฯ</div>
+    <div class="topbar-divider">|</div>
+    <div class="current-time" id="live-clock">กำลังโหลด...</div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-role" id="topbar-role-badge">กำลังตรวจเช็คสิทธิ์...</div>
+    <div class="user-name" id="topbar-user-name"></div>
+    <div class="ntf-wrap">
+      <button class="ntf-bell-btn" onclick="ntfToggle(event)" aria-label="การแจ้งเตือน">🔔<span class="ntf-badge" id="ntfBadge">0</span></button>
+      <div class="ntf-panel" id="ntfPanel">
+        <div class="ntf-panel-header"><strong>🔔 การแจ้งเตือน</strong><button class="ntf-mark-all" onclick="ntfMarkAllRead()">ทำเครื่องหมายว่าอ่านแล้วทั้งหมด</button></div>
+        <div id="ntfList"><div class="ntf-empty">กำลังโหลด...</div></div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="handleLogout()">ออกจากระบบ ⟳</button>
+  </div>
+</header>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+<div class="app-container">
+  <nav class="sidebar" id="sidebar-menu"></nav>
+  <main class="main-content">
+    <h1>🏥 ประกันสุขภาพและอุบัติเหตุกลุ่ม</h1>
+    <p class="page-sub">จัดการสมาชิกกรมธรรม์และผู้รับผลประโยชน์ — สำหรับ Super Admin เท่านั้น</p>
+
+    <div id="noAccessView" style="display:none">
+      <div class="card">
+        <div class="no-access"><div class="icon">🔒</div><p>หน้านี้สำหรับ Super Admin เท่านั้น</p></div>
+      </div>
+    </div>
+
+    <div id="mainView" style="display:none">
+      <div class="stat-strip" id="statStrip">
+        <div class="stat-chip">สมาชิกทั้งหมด<strong id="statTotal">-</strong> คน</div>
+        <div class="stat-chip">กรมธรรม์ Active<strong id="statActive">-</strong> คน</div>
+        <div class="stat-chip">ปีกรมธรรม์ปัจจุบัน<strong id="statYear">-</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="ค้นหาชื่อ หรือรหัสพนักงาน..." oninput="onSearchInput()">
+        </div>
+        <select class="select-box" id="policyYearFilter" onchange="resetAndLoad()">
+          <option value="">ทุกปีกรมธรรม์</option>
+        </select>
+        <select class="select-box" id="statusFilter" onchange="resetAndLoad()">
+          <option value="">ทุกสถานะ</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="cancelled">ยกเลิก</option>
+        </select>
+        <button class="btn btn-primary" onclick="openMemberModal()">➕ เพิ่มสมาชิก</button>
+        <button class="btn btn-outline" onclick="exportExcel()">⬇ Export</button>
+      </div>
+
+      <div class="card">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th>รหัสพนักงาน</th><th>ชื่อ-สกุล</th><th>หน่วยงาน</th>
+              <th>เลขกรมธรรม์</th><th>ปีกรมธรรม์</th><th>แผนความคุ้มครอง</th>
+              <th>วันเริ่ม-สิ้นสุด</th><th>ผู้รับผลประโยชน์</th><th>สถานะ</th><th>จัดการ</th>
+            </tr></thead>
+            <tbody id="tableBody"><tr><td colspan="10" class="loading-state">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div class="page-info" id="pageInfo"></div>
+          <div id="pageButtons"></div>
+        </div>
+      </div>
+
+      <h1 style="margin-top:32px">💊 เคลม / เรียกร้องค่าสินไหม</h1>
+      <p class="page-sub">ย้ายไปจัดการที่ระบบติดตามเคลมสินไหมโดยเฉพาะแล้ว (รองรับขั้นตอนส่ง Messenger / เทเวศร์ตรวจสอบเอกสาร / ผลพิจารณา ครบถ้วนกว่าเดิม)</p>
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="font-size:13.5px;color:#475569">จัดการรายการรับเอกสาร ส่งบริษัทประกัน และผลพิจารณา ได้ที่ระบบติดตามเคลมสินไหม (ไม่ต้องล็อกอิน ใช้ URL ตรงเฉพาะแอดมิน/เทเวศร์ประสานงาน)</div>
+        <a href="manage_claim_status.html" class="btn btn-primary" style="text-decoration:none">🔗 ไปที่ระบบติดตามเคลมสินไหม</a>
+      </div>
+
+      <h1 style="margin-top:32px">💰 งบประมาณเบี้ยประกัน &amp; แจ้งเข้า-แจ้งออกรายเดือน</h1>
+      <p class="page-sub">บันทึกรอบกรมธรรม์แต่ละปี (เบี้ยเปลี่ยนได้ทุกปีตามที่บริษัทพิจารณา) — ดึงรายชื่อแจ้งเข้า-ออกอัตโนมัติจากสถานะเจ้าหน้าที่ในระบบ แล้ว export ไฟล์ส่งบริษัทเทเวศได้ทันที</p>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700;font-size:15px">📆 รอบกรมธรรม์ (ต่ออายุรายปี)</div>
+          <button class="btn btn-primary" onclick="openPolicyPeriodForm()">➕ เพิ่มรอบกรมธรรม์ใหม่</button>
+        </div>
+
+        <div id="policyPeriodForm" style="display:none;background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px">
+          <input type="hidden" id="pp_id">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group"><label>ปีกรมธรรม์ (ป้ายกำกับ)</label><input type="text" id="pp_label" placeholder="เช่น 2569/2570" style="width:130px"></div>
+            <div class="form-group"><label>คุ้มครองตั้งแต่</label><input type="date" id="pp_start" style="width:160px"></div>
+            <div class="form-group"><label>ถึงวันที่</label><input type="date" id="pp_end" style="width:160px"></div>
+            <div class="form-group"><label>วงเงินคุ้มครองสุขภาพ (บาท)</label><input type="number" id="pp_health" style="width:140px"></div>
+            <div class="form-group"><label>วงเงินคุ้มครองอุบัติเหตุ (บาท)</label><input type="number" id="pp_accident" style="width:140px"></div>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+            <div class="form-group"><label>อายุเกณฑ์แบ่งเรทเบี้ย (ปี)</label><input type="number" id="pp_age_threshold" value="65" style="width:110px"></div>
+            <div class="form-group"><label>เบี้ยฯ อายุไม่เกินเกณฑ์ (บาท/คน/ปี)</label><input type="number" id="pp_premium_under" style="width:150px"></div>
+            <div class="form-group"><label>เบี้ยฯ อายุเกินเกณฑ์ (บาท/คน/ปี)</label><input type="number" id="pp_premium_over" style="width:150px"></div>
+            <div class="form-group"><label>อายุสูงสุดที่รับประกันได้ (ปี)</label><input type="number" id="pp_max_age" value="85" style="width:110px"></div>
+            <div class="form-group"><label>เลขที่กรมธรรม์</label><input type="text" id="pp_policy_no" placeholder="เช่น 00/2026-R0069881-NHF" style="width:200px"></div>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:10px">
+            <div class="form-group"><label>วันที่ผู้บริหารลงนามต่ออายุ</label><input type="date" id="pp_signed_date" style="width:160px"></div>
+            <div class="form-group" style="flex:1;min-width:220px"><label>ผู้ลงนาม/ตำแหน่ง (ถ้าต้องการบันทึก)</label><input type="text" id="pp_signed_by" style="width:100%"></div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="savePolicyPeriod()">💾 บันทึกรอบกรมธรรม์</button>
+            <button class="btn btn-outline" onclick="closePolicyPeriodForm()">ยกเลิก</button>
+          </div>
+          <div class="note-box" style="margin-top:10px;font-size:11.5px">📌 ตามกติกาบริษัทประกัน: อายุที่ใช้ตัดสินเรทเบี้ย/สิทธิ์ต่ออายุ คำนวณ ณ <b>วันก่อนวันเริ่มคุ้มครองรอบนี้ 1 วัน</b> (เช่น เริ่มคุ้มครอง 1 ก.ค. ใช้อายุ ณ 30 มิ.ย.) ไม่ใช่อายุ ณ วันเริ่มคุ้มครองจริง — ระบบคำนวณให้อัตโนมัติจากวันเกิดในระบบ ถ้าอายุ ณ วันนั้นเกิน "อายุสูงสุดที่รับประกันได้" จะถูกคัดออกจากประมาณการงบและแจ้งเตือนให้ตรวจสอบ</div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="data-table" id="policyPeriodTable">
+            <thead><tr><th>ปีกรมธรรม์</th><th>ช่วงคุ้มครอง</th><th>อายุเกณฑ์</th><th>เบี้ยไม่เกิน/เกินเกณฑ์</th><th>วงเงินสุขภาพ/อุบัติเหตุ</th><th>ลงนามต่ออายุ</th><th></th></tr></thead>
+            <tbody id="policyPeriodBody"><tr><td colspan="7" style="text-align:center;padding:16px;color:#94a3b8">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="stat-strip" style="margin-top:16px">
+          <div class="stat-chip">รอบกรมธรรม์ปัจจุบัน<strong id="statCurrentPeriod">-</strong></div>
+          <div class="stat-chip">สมาชิก Active ทั้งหมด<strong id="statBudgetActive">-</strong> คน</div>
+          <div class="stat-chip">ประมาณการเบี้ยประกันทั้งปี<strong id="statBudgetTotal">-</strong> บาท</div>
+        </div>
+        <div id="statBudgetWarn" style="color:#dc2626;font-size:12px;margin-top:6px"></div>
+        <div class="note-box" style="margin-top:10px">ℹ️ "รอบกรมธรรม์ปัจจุบัน" คือรอบที่วันนี้อยู่ในช่วง "คุ้มครองตั้งแต่-ถึงวันที่" — ระบบใช้เรทของรอบนี้คำนวณงบประมาณและเติมค่าเริ่มต้นให้อัตโนมัติตอนเพิ่มสมาชิกใหม่ในตาราง "สมาชิกกรมธรรม์" ด้านบน พอครบรอบปี เพิ่มรอบใหม่ได้เลยโดยไม่ต้องลบของเดิม (เก็บประวัติเบี้ยแต่ละปีไว้ครบ)</div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="form-group" style="margin:0"><label style="font-size:12px">เดือนที่แจ้ง</label><input type="month" id="notifyMonth"></div>
+          <button class="btn btn-primary" onclick="scanNotifyCandidates()">🔍 ค้นหารายชื่อเข้าเกณฑ์เดือนนี้</button>
+        </div>
+        <div class="note-box">📌 ระบบค้นจากสถานะเจ้าหน้าที่ในหน้า "ข้อมูลเจ้าหน้าที่": แจ้งเข้า = วันเริ่มงานอยู่ในเดือนที่เลือก + สถานะปกติ · แจ้งออก = วันที่ออกจากงานจริงอยู่ในเดือนที่เลือก + สถานะ ลาออก/เกษียณ/เสียชีวิต/เลิกจ้าง — ตรวจสอบและติ๊กเลือกก่อนบันทึกทุกครั้ง เพิ่ม/ลบแถวเองได้</div>
+
+        <h3 style="margin-top:18px;color:#16a34a">📥 แจ้งเข้า</h3>
+        <div class="table-scroll">
+          <table class="data-table" id="notifyInTable">
+            <thead><tr><th style="width:28px"><input type="checkbox" id="notifyInSelectAll" onchange="toggleAllNotify('in')"></th><th>รหัสพนักงาน</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>หน่วยงาน</th><th>วันที่บรรจุ</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <tbody id="notifyInBody"><tr><td colspan="8" class="empty-state">กดปุ่มค้นหาด้านบนเพื่อเริ่ม</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="addManualNotifyRow('in')">➕ เพิ่มรายชื่อเอง</button>
+          <button class="btn btn-success" onclick="saveNotifyBatch('in')">💾 บันทึกรายการแจ้งเข้าที่เลือก</button>
+        </div>
+
+        <h3 style="margin-top:26px;color:#dc2626">📤 แจ้งออก</h3>
+        <div class="table-scroll">
+          <table class="data-table" id="notifyOutTable">
+            <thead><tr><th style="width:28px"><input type="checkbox" id="notifyOutSelectAll" onchange="toggleAllNotify('out')"></th><th>รหัสพนักงาน</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>หน่วยงาน</th><th>เหตุผล</th><th>วันที่ออก</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <tbody id="notifyOutBody"><tr><td colspan="9" class="empty-state">กดปุ่มค้นหาด้านบนเพื่อเริ่ม</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="addManualNotifyRow('out')">➕ เพิ่มรายชื่อเอง</button>
+          <button class="btn btn-success" onclick="saveNotifyBatch('out')">💾 บันทึกรายการแจ้งออกที่เลือก</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">🗂️ ประวัติการแจ้ง — เลือกเดือนเพื่อ Export ไฟล์ส่งบริษัทประกัน</h3>
+        <div class="toolbar">
+          <select class="select-box" id="historyMonthFilter" onchange="loadNotifyHistory()"><option value="">-- เลือกเดือน --</option></select>
+          <button class="btn btn-outline" onclick="exportNotifyExcel('in')">⬇ Export ไฟล์แจ้งเข้า (.xlsx)</button>
+          <button class="btn btn-outline" onclick="exportNotifyExcel('out')">⬇ Export ไฟล์แจ้งออก (.xlsx)</button>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr><th>ประเภท</th><th>รหัสพนักงาน</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>วันที่</th><th>หมายเหตุ</th><th>บันทึกเมื่อ</th><th>จัดการ</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="8" class="empty-state">เลือกเดือนด้านบน</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">📥 นำเข้ารายชื่อเจ้าหน้าที่จากไฟล์แจ้งต่ออายุประกัน (จับคู่ด้วยเลขบัตรประชาชน)</h3>
+        <div class="note-box">ℹ️ ใช้กับไฟล์ที่บริษัทประกันส่งมาตอนต่ออายุ (คอลัมน์: เลขที่บัตรประชาชน, ชื่อ-นามสกุล, ตำแหน่ง, จำนวนเงินฯ สุขภาพ/อุบัติเหตุ, หน่วยงาน) — ระบบจะจับคู่กับเจ้าหน้าที่ในระบบด้วยเลขบัตร แล้วเพิ่ม/อัปเดตในตาราง "สมาชิกกรมธรรม์" ด้านบน โดยใช้รอบกรมธรรม์ปัจจุบันเป็นค่าเริ่มต้น</div>
+        <input type="file" id="memberImportFile" accept=".xls,.xlsx">
+        <button class="btn btn-primary" onclick="processMemberImportFile()">🔍 ประมวลผล/ตรวจสอบ</button>
+        <div id="memberImportPreview" style="display:none;margin-top:14px">
+          <div class="stat-strip">
+            <div class="stat-chip">แถวทั้งหมดในไฟล์<strong id="miStatTotal">-</strong></div>
+            <div class="stat-chip">จับคู่ได้<strong id="miStatMatched">-</strong></div>
+            <div class="stat-chip">จับคู่ไม่ได้<strong id="miStatUnmatched">-</strong></div>
+          </div>
+          <div id="miUnmatchedWrap" style="display:none">
+            <div class="note-box" style="background:#fff7ed;border-left-color:#dd6b20">⚠️ จับคู่เลขบัตรไม่ได้ (จะไม่ถูกนำเข้า):</div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>เลขบัตรประชาชน</th><th>ชื่อ-สกุล (จากไฟล์)</th></tr></thead><tbody id="miUnmatchedBody"></tbody></table></div>
+          </div>
+          <button class="btn btn-success" style="margin-top:10px" onclick="confirmMemberImport()">💾 ยืนยันนำเข้า <span id="miConfirmCount"></span> รายการ</button>
+          <div id="miImportLog" style="margin-top:10px;font-size:12.5px"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal: เพิ่ม/แก้ไขสมาชิก -->
+<div class="modal-backdrop" id="memberModal">
+  <div class="modal">
+    <div class="modal-header"><h2 id="memberModalTitle">เพิ่มสมาชิกประกันกลุ่ม</h2><button class="modal-close" onclick="closeMemberModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>เจ้าหน้าที่</label>
+          <input type="text" id="f_staff_search" placeholder="🔍 พิมพ์ชื่อหรือรหัสพนักงานเพื่อค้นหา..." oninput="renderStaffSelect('f_staff_id',this.value)" style="margin-bottom:6px">
+          <select id="f_staff_id" onchange="onStaffPick()">
+            <option value="">-- เลือกเจ้าหน้าที่ --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>เลขกรมธรรม์</label>
+          <input type="text" id="f_policy_no" placeholder="เลขที่กรมธรรม์">
+        </div>
+        <div class="form-group">
+          <label>ปีกรมธรรม์ (พ.ศ.)</label>
+          <input type="number" id="f_policy_year" placeholder="เช่น 2569">
+        </div>
+        <div class="form-group">
+          <label>แผนความคุ้มครอง</label>
+          <input type="text" id="f_coverage_plan" placeholder="เช่น แผน A, แผน B">
+        </div>
+        <div class="form-group">
+          <label>วงเงินคุ้มครองสุขภาพ (บาท)</label>
+          <input type="number" id="f_health_amount">
+        </div>
+        <div class="form-group">
+          <label>วงเงินคุ้มครองอุบัติเหตุ (บาท)</label>
+          <input type="number" id="f_accident_amount">
+        </div>
+        <div class="form-group">
+          <label>สถานะ</label>
+          <select id="f_status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="cancelled">ยกเลิก</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>วันที่เริ่มความคุ้มครอง</label>
+          <input type="date" id="f_effective_date">
+        </div>
+        <div class="form-group">
+          <label>วันที่สิ้นสุดความคุ้มครอง</label>
+          <input type="date" id="f_expiry_date">
+        </div>
+        <div class="form-group full">
+          <label>หมายเหตุ</label>
+          <input type="text" id="f_notes" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)">
+        </div>
+      </div>
+
+      <div class="ben-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <label style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase">ผู้รับผลประโยชน์</label>
+          <button class="btn btn-outline btn-sm" onclick="addBeneficiaryRow()">➕ เพิ่มผู้รับผลประโยชน์</button>
+        </div>
+        <div id="beneficiaryRows"></div>
+        <div class="ben-total" id="benTotal"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeMemberModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveMemberBtn" onclick="saveMember()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: ยืนยันลบ -->
+<div class="modal-backdrop" id="deleteModal">
+  <div class="modal" style="width:400px">
+    <div class="modal-header"><h2>ยืนยันการลบ</h2><button class="modal-close" onclick="closeDeleteModal()">✕</button></div>
+    <div class="modal-body"><p id="deleteConfirmText" style="font-size:14px;color:#334155"></p></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">ยกเลิก</button>
+      <button class="btn" style="background:#dc2626;color:#fff" onclick="confirmDelete()">ลบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const SUPABASE_URL='https://sydijbrkbfvjrcxhfrlo.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5ZGlqYnJrYmZ2anJjeGhmcmxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3MTEwMTQsImV4cCI6MjA5ODI4NzAxNH0.vm6s9R6Lig8DKz41rRfBnvaXqu4QdoH0MGx0BS77ZRA';
+const{createClient}=supabase;const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let currentUser=null,currentProfile=null,staffList=[],staffMap={};
+let currentPage=0,totalCount=0,searchTimer=null,editingMemberId=null,deleteTargetId=null;
+const PAGE_SIZE=20;
+const statusLabel={active:'Active',inactive:'Inactive',cancelled:'ยกเลิก'};
+const statusClass={active:'status-active',inactive:'status-inactive',cancelled:'status-cancelled'};
+
+const superAdminMenu=[
+  {type:'category',name:'ภาพรวม'},{type:'item',name:'Dashboard',icon:'📊',link:'dashboard.html'},
+  {type:'category',name:'บุคลากร'},{type:'item',name:'ข้อมูลเจ้าหน้าที่',icon:'👥',link:'staff.html'},{type:'item',name:'อนุมัติแก้ไขข้อมูล',icon:'📝',link:'approve_edit_requests.html'},
+  {type:'category',name:'การเวลา'},{type:'item',name:'จัดการ Shift',icon:'🕐',link:'shift.html'},{type:'item',name:'บันทึกเวลา',icon:'📋',link:'timesheet.html'},{type:'item',name:'คำขอ OT',icon:'⏰',link:'ot.html'},{type:'item',name:'อนุมัติคำขอปรับปรุงเวลา',icon:'⏱️',link:'approve_time_correction.html'},
+  {type:'category',name:'การเงิน'},{type:'item',name:'เงินเดือน',icon:'💰',link:'salary.html'},{type:'item',name:'นำเข้าเงินเดือนย้อนหลัง',icon:'📥',link:'salary_history_import.html'},{type:'item',name:'Payslip',icon:'📄',link:'payslip.html'},{type:'item',name:'ส่งข้อมูลธนาคาร',icon:'🏦',link:'bank_transfer.html'},{type:'item',name:'หนังสือรับรอง 50ทวิ',icon:'📄',link:'tax50twi.html'},{type:'item',name:'ประกันสังคม',icon:'🏛️',link:'social_security.html'},{type:'item',name:'รายงานภาษีกรมสรรพากร',icon:'📄',link:'tax_report.html'},
+  {type:'category',name:'สวัสดิการ'},{type:'item',name:'ประกันสุขภาพและอุบัติเหตุกลุ่ม',icon:'🏥',link:'group_insurance.html',active:true},{type:'item',name:'ค่าตอบแทนเงินบำเหน็จ',icon:'🎖️',link:'gratuity.html'},
+  {type:'category',name:'ระบบ'},{type:'item',name:'แชทกับเจ้าหน้าที่',icon:'💬',link:'manage_chat.html'},{type:'item',name:'ประกาศคำสั่ง (จัดการ)',icon:'📜',link:'manage_announcements.html'},{type:'item',name:'หนังสือรับรอง (อนุมัติขอ)',icon:'📝',link:'approve_cert.html'},{type:'item',name:'50 ทวิ (อนุมัติขอ)',icon:'📜',link:'approve_50twi.html'},{type:'item',name:'อนุมัติคำขอลา',icon:'🗓️',link:'approve_leave.html'},{type:'item',name:'คุมเลขที่คำสั่ง/เอกสาร',icon:'📑',link:'document_control.html'},{type:'item',name:'สำรอง/กู้คืนข้อมูล',icon:'🗄️',link:'system_backup.html'},{type:'item',name:'ตั้งค่าระบบ',icon:'⚙️',link:'settings.html'},
+];
+
+const unitAdminMenu=[
+  {type:'category',name:'ภาพรวม'},{type:'item',name:'Dashboard',icon:'📊',link:'dashboard.html'},
+  {type:'category',name:'บุคลากร'},{type:'item',name:'ข้อมูลเจ้าหน้าที่',icon:'👥',link:'staff.html'},{type:'item',name:'อนุมัติแก้ไขข้อมูล',icon:'📝',link:'approve_edit_requests.html'},
+  {type:'category',name:'การเวลา'},{type:'item',name:'จัดการ Shift',icon:'🕐',link:'shift.html'},{type:'item',name:'บันทึกเวลา',icon:'📋',link:'timesheet.html'},{type:'item',name:'คำขอ OT',icon:'⏰',link:'ot.html'},{type:'item',name:'อนุมัติคำขอปรับปรุงเวลา',icon:'⏱️',link:'approve_time_correction.html'},
+  {type:'category',name:'การเงิน'},{type:'item',name:'เงินเดือน',icon:'💰',link:'salary.html'},{type:'item',name:'Payslip',icon:'📄',link:'payslip.html'},{type:'item',name:'ส่งข้อมูลธนาคาร',icon:'🏦',link:'bank_transfer.html'},{type:'item',name:'ประกันสังคม / กยศ',icon:'🏛️',link:'social_security.html'},
+  {type:'category',name:'ระบบ'},{type:'item',name:'แชทกับเจ้าหน้าที่',icon:'💬',link:'manage_chat.html'},{type:'item',name:'หนังสือรับรอง (กดขอ)',icon:'📝',link:'request_cert.html'},{type:'item',name:'50 ทวิ (กดขอ)',icon:'📜',link:'request_50twi.html'},{type:'item',name:'ขอลา (พนักงาน)',icon:'🗓️',link:'request_leave.html'},{type:'item',name:'อนุมัติคำขอลา',icon:'✅',link:'approve_leave.html'},
+];
+
+function renderSidebar(m){const c=document.getElementById('sidebar-menu');c.innerHTML='';m.forEach(x=>{if(x.type==='category'){const d=document.createElement('div');d.className='menu-category';d.innerText=x.name;c.appendChild(d);}else{const a=document.createElement('a');a.href=x.link||'#';a.className='menu-item'+(x.active?' active':'');a.innerHTML=`<span>${x.icon}</span> ${x.name}`;c.appendChild(a);}});}
+function toggleSidebar(){document.getElementById('sidebar-menu').classList.toggle('open');document.getElementById('sidebarBackdrop').classList.toggle('show');}
+
+async function authGuard(){const{data}=await sb.auth.getSession();if(!data.session){window.location.href='login.html';return false;}currentUser=data.session.user;const{data:p,error}=await sb.from('profiles').select('display_name,role,department').eq('id',currentUser.id).single();if(error||!p||p.role!=='super'){window.location.href='login.html';return false;}currentProfile=p;const isSuper=currentProfile.role==='super';document.getElementById('topbar-role-badge').innerText=isSuper?'⬡ Super Admin':'⬡ Unit Admin';document.getElementById('topbar-user-name').innerText=currentProfile.display_name||currentUser.email;renderSidebar(isSuper?superAdminMenu:unitAdminMenu);return true;}
+async function handleLogout(){await sb.auth.signOut();window.location.href='login.html';}
+
+function startLiveClock(){function t(){const n=new Date();const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];const mn=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];document.getElementById('live-clock').innerText=`วัน${days[n.getDay()]}ที่ ${n.getDate()} ${mn[n.getMonth()]} ${n.getFullYear()+543} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')} น.`;}setInterval(t,1000);t();}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function showToast(msg,isErr=false){const w=document.getElementById('toastWrap');const t=document.createElement('div');t.className='toast'+(isErr?' error':'');t.innerHTML=`<span>${isErr?'⚠️':'✅'}</span><span>${esc(msg)}</span>`;w.appendChild(t);setTimeout(()=>t.remove(),4000);}
+function resetAndLoad(){currentPage=0;loadMembers();}
+function onSearchInput(){clearTimeout(searchTimer);searchTimer=setTimeout(resetAndLoad,350);}
+
+// ============================================================
+// LOAD STAFF LIST (สำหรับ dropdown เลือกเจ้าหน้าที่)
+// ============================================================
+async function loadStaffList(){
+  const{data}=await sb.from('staff').select('id,employee_code,prefix,first_name,last_name,department').eq('status','active').order('employee_code');
+  staffList=data||[];
+  staffList.forEach(s=>staffMap[s.id]=s);
+  renderStaffSelect('f_staff_id','');
+  if(document.getElementById('c_staff_id'))renderStaffSelect('c_staff_id','');
+}
+
+// เติม option ใน select เจ้าหน้าที่ พร้อมกรองตามคำค้นหา (ใช้ทั้ง modal สมาชิกและ modal เคลม)
+function renderStaffSelect(selectId,filterText){
+  const sel=document.getElementById(selectId);
+  if(!sel)return;
+  const currentVal=sel.value;
+  const q=(filterText||'').trim().toLowerCase();
+  const filtered=q?staffList.filter(s=>((s.prefix||'')+s.first_name+' '+s.last_name+' '+s.employee_code).toLowerCase().includes(q)):staffList;
+  sel.innerHTML='<option value="">-- เลือกเจ้าหน้าที่ --</option>'+filtered.map(s=>`<option value="${s.id}">${esc(s.employee_code)} — ${esc((s.prefix||'')+s.first_name+' '+s.last_name)}${s.department?' ('+esc(s.department)+')':''}</option>`).join('');
+  if(currentVal&&filtered.some(s=>s.id===currentVal))sel.value=currentVal;
+}
+
+// ============================================================
+// LOAD MEMBERS TABLE
+// ============================================================
+async function loadMembers(){
+  const tbody=document.getElementById('tableBody');
+  tbody.innerHTML='<tr><td colspan="10" class="loading-state">กำลังโหลด...</td></tr>';
+  const q=document.getElementById('searchInput').value.trim();
+  const yearFilter=document.getElementById('policyYearFilter').value;
+  const statusFilterVal=document.getElementById('statusFilter').value;
+
+  let query=sb.from('insurance_members').select('*, insurance_beneficiaries(id,prefix,first_name,last_name,relationship,percent)',{count:'exact'});
+  if(yearFilter)query=query.eq('policy_year_be',parseInt(yearFilter));
+  if(statusFilterVal)query=query.eq('status',statusFilterVal);
+
+  // ค้นหาชื่อ/รหัสเจ้าหน้าที่ก่อน แล้วกรองที่ระดับ query ด้วย staff_id ที่ตรงกัน (ก่อนแบ่งหน้า)
+  // เดิมกรองคำค้นหาหลังแบ่งหน้าไปแล้ว ทำให้ถ้ารายการที่ตรงอยู่คนละหน้ากับหน้าที่แสดงอยู่ จะหาไม่เจอ
+  if(q){
+    const qLower=q.toLowerCase();
+    const matchIds=staffList.filter(s=>((s.employee_code||'')+' '+(s.prefix||'')+s.first_name+' '+s.last_name).toLowerCase().includes(qLower)).map(s=>s.id);
+    if(!matchIds.length){
+      tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div>ไม่พบข้อมูลสมาชิกประกันกลุ่ม</div></td></tr>';
+      totalCount=0; renderPagination(); updateStats(); return;
+    }
+    query=query.in('staff_id',matchIds);
+  }
+
+  query=query.order('created_at',{ascending:false});
+  const from=currentPage*PAGE_SIZE,to=from+PAGE_SIZE-1;
+  query=query.range(from,to);
+
+  const{data,error,count}=await query;
+  if(error){tbody.innerHTML=`<tr><td colspan="10"><div class="empty-state">⚠️ โหลดไม่สำเร็จ: ${esc(error.message)}</div></td></tr>`;return;}
+  totalCount=count||0;
+
+  const rows=data||[];
+
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="icon">📭</div>ไม่พบข้อมูลสมาชิกประกันกลุ่ม</div></td></tr>';renderPagination();updateStats();return;}
+
+  tbody.innerHTML=rows.map(r=>{
+    const s=staffMap[r.staff_id]||{};
+    const bens=r.insurance_beneficiaries||[];
+    const benText=bens.length?bens.map(b=>`${esc((b.prefix||'')+b.first_name+' '+b.last_name)} (${b.percent}%)`).join('<br>'):'<span style="color:#cbd5e1">— ไม่มี —</span>';
+    return `<tr>
+      <td><code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px">${esc(s.employee_code||'-')}</code></td>
+      <td><strong>${esc((s.prefix||'')+(s.first_name||'')+' '+(s.last_name||''))}</strong></td>
+      <td style="font-size:12px">${esc(s.department||'-')}</td>
+      <td>${esc(r.policy_no||'-')}</td>
+      <td>${r.policy_year_be||'-'}</td>
+      <td>${esc(r.coverage_plan||'-')}</td>
+      <td style="font-size:12px">${r.effective_date||'-'} ถึง ${r.expiry_date||'-'}</td>
+      <td style="font-size:12px;white-space:normal;max-width:220px">${benText}</td>
+      <td><span class="status-pill ${statusClass[r.status]||''}">${statusLabel[r.status]||r.status}</span></td>
+      <td style="white-space:nowrap">
+        <button class="action-btn btn-edit" onclick='editMember(${JSON.stringify(r).replace(/'/g,"&#39;")})'>แก้ไข</button>
+        <button class="action-btn btn-del" onclick="openDeleteModal('${r.id}','${esc((s.prefix||'')+(s.first_name||'')+' '+(s.last_name||''))}')">ลบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPagination();
+  updateStats();
+}
+
+async function updateStats(){
+  const{count:total}=await sb.from('insurance_members').select('*',{count:'exact',head:true});
+  const{count:active}=await sb.from('insurance_members').select('*',{count:'exact',head:true}).eq('status','active');
+  document.getElementById('statTotal').textContent=total||0;
+  document.getElementById('statActive').textContent=active||0;
+  const nowYearBE=new Date().getFullYear()+543;
+  document.getElementById('statYear').textContent=nowYearBE;
+}
+
+function renderPagination(){
+  const totalPages=Math.max(1,Math.ceil(totalCount/PAGE_SIZE));
+  document.getElementById('pageInfo').textContent=`หน้า ${currentPage+1} / ${totalPages} — ทั้งหมด ${totalCount} รายการ`;
+  document.getElementById('pageButtons').innerHTML=`
+    <button class="page-btn" ${currentPage===0?'disabled':''} onclick="currentPage--;loadMembers()">‹ ก่อนหน้า</button>
+    <button class="page-btn" ${currentPage>=totalPages-1?'disabled':''} onclick="currentPage++;loadMembers()">ถัดไป ›</button>`;
+}
+
+async function initPolicyYearOptions(){
+  const nowYearBE=new Date().getFullYear()+543;
+  const ySet=new Set([nowYearBE,nowYearBE-1,nowYearBE+1]);
+  const{data}=await sb.from('insurance_members').select('policy_year_be');
+  (data||[]).forEach(r=>{if(r.policy_year_be)ySet.add(r.policy_year_be);});
+  const sel=document.getElementById('policyYearFilter');
+  [...ySet].sort((a,b)=>b-a).forEach(y=>sel.innerHTML+=`<option value="${y}">${y}</option>`);
+}
+
+// ============================================================
+// MODAL: เพิ่ม/แก้ไขสมาชิก + ผู้รับผลประโยชน์
+// ============================================================
+function openMemberModal(){
+  editingMemberId=null;
+  document.getElementById('memberModalTitle').textContent='เพิ่มสมาชิกประกันกลุ่ม';
+  document.getElementById('f_staff_search').value='';
+  renderStaffSelect('f_staff_id','');
+  document.getElementById('f_staff_id').value='';
+  document.getElementById('f_policy_no').value='';
+  document.getElementById('f_policy_year').value=new Date().getFullYear()+543;
+  document.getElementById('f_coverage_plan').value='';
+  document.getElementById('f_health_amount').value=insuranceSettings?insuranceSettings.health_amount:'';
+  document.getElementById('f_accident_amount').value=insuranceSettings?insuranceSettings.accident_amount:'';
+  document.getElementById('f_status').value='active';
+  document.getElementById('f_effective_date').value='';
+  document.getElementById('f_expiry_date').value='';
+  document.getElementById('f_notes').value='';
+  document.getElementById('beneficiaryRows').innerHTML='';
+  addBeneficiaryRow();
+  updateBenTotal();
+  document.getElementById('memberModal').classList.add('open');
+}
+function closeMemberModal(){document.getElementById('memberModal').classList.remove('open');}
+function onStaffPick(){/* reserved for future auto-fill */}
+
+function editMember(r){
+  editingMemberId=r.id;
+  document.getElementById('memberModalTitle').textContent='แก้ไขสมาชิกประกันกลุ่ม';
+  document.getElementById('f_staff_search').value='';
+  renderStaffSelect('f_staff_id','');
+  document.getElementById('f_staff_id').value=r.staff_id;
+  document.getElementById('f_policy_no').value=r.policy_no||'';
+  document.getElementById('f_policy_year').value=r.policy_year_be||'';
+  document.getElementById('f_coverage_plan').value=r.coverage_plan||'';
+  document.getElementById('f_health_amount').value=r.health_amount!=null?r.health_amount:(insuranceSettings?insuranceSettings.health_amount:'');
+  document.getElementById('f_accident_amount').value=r.accident_amount!=null?r.accident_amount:(insuranceSettings?insuranceSettings.accident_amount:'');
+  document.getElementById('f_status').value=r.status||'active';
+  document.getElementById('f_effective_date').value=r.effective_date||'';
+  document.getElementById('f_expiry_date').value=r.expiry_date||'';
+  document.getElementById('f_notes').value=r.notes||'';
+  document.getElementById('beneficiaryRows').innerHTML='';
+  const bens=r.insurance_beneficiaries||[];
+  if(bens.length)bens.forEach(b=>addBeneficiaryRow(b));
+  else addBeneficiaryRow();
+  updateBenTotal();
+  document.getElementById('memberModal').classList.add('open');
+}
+
+function addBeneficiaryRow(data){
+  data=data||{};
+  const wrap=document.getElementById('beneficiaryRows');
+  const div=document.createElement('div');
+  div.className='ben-row';
+  div.innerHTML=`
+    <input type="text" placeholder="คำนำหน้า" class="ben-prefix" value="${esc(data.prefix||'')}">
+    <input type="text" placeholder="ชื่อ" class="ben-first" value="${esc(data.first_name||'')}">
+    <input type="text" placeholder="นามสกุล" class="ben-last" value="${esc(data.last_name||'')}">
+    <input type="text" placeholder="ความสัมพันธ์" class="ben-rel" value="${esc(data.relationship||'')}">
+    <input type="number" placeholder="%" class="ben-pct" value="${data.percent!=null?data.percent:''}" min="0" max="100" oninput="updateBenTotal()">
+    <button class="ben-remove" onclick="this.parentElement.remove();updateBenTotal()" title="ลบแถวนี้">✕</button>`;
+  wrap.appendChild(div);
+}
+
+function updateBenTotal(){
+  const pcts=[...document.querySelectorAll('.ben-pct')].map(i=>parseFloat(i.value)||0);
+  const total=pcts.reduce((a,b)=>a+b,0);
+  const el=document.getElementById('benTotal');
+  if(pcts.length===0){el.textContent='';return;}
+  el.textContent=`รวมสัดส่วนผู้รับผลประโยชน์: ${total}% ${total===100?'✓':(total>100?'(เกิน 100%)':'(ยังไม่ครบ 100%)')}`;
+  el.className='ben-total '+(total===100?'ok':'bad');
+}
+
+async function saveMember(){
+  const staffId=document.getElementById('f_staff_id').value;
+  if(!staffId){showToast('กรุณาเลือกเจ้าหน้าที่',true);return;}
+
+  const beneficiaries=[...document.querySelectorAll('.ben-row')].map(row=>({
+    prefix:row.querySelector('.ben-prefix').value.trim(),
+    first_name:row.querySelector('.ben-first').value.trim(),
+    last_name:row.querySelector('.ben-last').value.trim(),
+    relationship:row.querySelector('.ben-rel').value.trim(),
+    percent:parseFloat(row.querySelector('.ben-pct').value)||0,
+  })).filter(b=>b.first_name||b.last_name);
+
+  const totalPct=beneficiaries.reduce((a,b)=>a+b.percent,0);
+  if(beneficiaries.length&&totalPct!==100){
+    if(!confirm(`สัดส่วนผู้รับผลประโยชน์รวม ${totalPct}% ไม่ครบ 100% ต้องการบันทึกต่อหรือไม่?`))return;
+  }
+
+  const payload={
+    staff_id:staffId,
+    policy_no:document.getElementById('f_policy_no').value.trim()||null,
+    policy_year_be:parseInt(document.getElementById('f_policy_year').value)||null,
+    coverage_plan:document.getElementById('f_coverage_plan').value.trim()||null,
+    health_amount:parseFloat(document.getElementById('f_health_amount').value)||null,
+    accident_amount:parseFloat(document.getElementById('f_accident_amount').value)||null,
+    status:document.getElementById('f_status').value,
+    effective_date:document.getElementById('f_effective_date').value||null,
+    expiry_date:document.getElementById('f_expiry_date').value||null,
+    notes:document.getElementById('f_notes').value.trim()||null,
+  };
+
+  const btn=document.getElementById('saveMemberBtn');
+  btn.disabled=true;btn.textContent='กำลังบันทึก...';
+  try{
+    let memberId=editingMemberId;
+    if(memberId){
+      const{error}=await sb.from('insurance_members').update(payload).eq('id',memberId);
+      if(error)throw error;
+      await sb.from('insurance_beneficiaries').delete().eq('member_id',memberId);
+    }else{
+      payload.created_by=currentUser.id;
+      const{data,error}=await sb.from('insurance_members').insert(payload).select('id').single();
+      if(error)throw error;
+      memberId=data.id;
+    }
+    if(beneficiaries.length){
+      const benPayload=beneficiaries.map(b=>({...b,member_id:memberId}));
+      const{error:benErr}=await sb.from('insurance_beneficiaries').insert(benPayload);
+      if(benErr)throw benErr;
+    }
+    showToast(editingMemberId?'แก้ไขข้อมูลสำเร็จ':'เพิ่มสมาชิกสำเร็จ');
+    closeMemberModal();
+    resetAndLoad();
+  }catch(err){
+    showToast('บันทึกไม่สำเร็จ: '+err.message,true);
+  }finally{
+    btn.disabled=false;btn.textContent='💾 บันทึก';
+  }
+}
+
+// ============================================================
+// DELETE
+// ============================================================
+function openDeleteModal(id,name){
+  deleteTargetId=id;
+  document.getElementById('deleteConfirmText').textContent=`ต้องการลบสมาชิกประกันกลุ่มของ "${name}" ออกจากระบบใช่หรือไม่? (ผู้รับผลประโยชน์ที่ผูกไว้จะถูกลบไปด้วย)`;
+  document.getElementById('deleteModal').classList.add('open');
+}
+function closeDeleteModal(){document.getElementById('deleteModal').classList.remove('open');deleteTargetId=null;}
+async function confirmDelete(){
+  if(!deleteTargetId)return;
+  const{error}=await sb.from('insurance_members').delete().eq('id',deleteTargetId);
+  if(error){showToast('ลบไม่สำเร็จ: '+error.message,true);return;}
+  showToast('ลบข้อมูลสำเร็จ');
+  closeDeleteModal();
+  resetAndLoad();
+}
+
+// ============================================================
+// EXPORT EXCEL
+// ============================================================
+async function exportExcel(){
+  const{data,error}=await sb.from('insurance_members').select('*, insurance_beneficiaries(prefix,first_name,last_name,relationship,percent)').order('created_at',{ascending:false});
+  if(error){showToast('Export ไม่สำเร็จ: '+error.message,true);return;}
+  const rows=(data||[]).map(r=>{
+    const s=staffMap[r.staff_id]||{};
+    const bens=(r.insurance_beneficiaries||[]).map(b=>`${(b.prefix||'')}${b.first_name} ${b.last_name} (${b.relationship||'-'}, ${b.percent}%)`).join('; ');
+    return{
+      'รหัสพนักงาน':s.employee_code||'','ชื่อ-สกุล':(s.prefix||'')+(s.first_name||'')+' '+(s.last_name||''),
+      'หน่วยงาน':s.department||'','เลขกรมธรรม์':r.policy_no||'','ปีกรมธรรม์':r.policy_year_be||'',
+      'แผนความคุ้มครอง':r.coverage_plan||'','วันเริ่ม':r.effective_date||'','วันสิ้นสุด':r.expiry_date||'',
+      'ผู้รับผลประโยชน์':bens,'สถานะ':statusLabel[r.status]||r.status,'หมายเหตุ':r.notes||'',
+    };
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'ประกันกลุ่ม');
+  XLSX.writeFile(wb,`ประกันสุขภาพและอุบัติเหตุกลุ่ม_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast(`Export สำเร็จ ${rows.length} รายการ`);
+}
+
+// ===================== งบประมาณเบี้ยประกัน + แจ้งเข้า-แจ้งออก =====================
+let insuranceSettings=null, policyPeriods=[], fullStaffForNotify=[], notifyRowsIn=[], notifyRowsOut=[];
+const exitReasonLabel={resigned:'ลาออก',retired:'เกษียณ',deceased:'เสียชีวิต',terminated:'เลิกจ้าง'};
+
+const thMonthsShort=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thaiDateShort(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');return `${d.getDate()} ${thMonthsShort[d.getMonth()]} ${String(d.getFullYear()+543).slice(-2)}`;}
+function thaiDateFull(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`;}
+function calcAge(birthIso,asOfIso){if(!birthIso)return '';const b=new Date(birthIso+'T00:00:00');const a=asOfIso?new Date(asOfIso+'T00:00:00'):new Date();let age=a.getFullYear()-b.getFullYear();const m=a.getMonth()-b.getMonth();if(m<0||(m===0&&a.getDate()<b.getDate()))age--;return age;}
+
+// ---------------- รอบกรมธรรม์ (ต่ออายุรายปี) ----------------
+async function loadPolicyPeriods(){
+  const{data,error}=await sb.from('insurance_policy_periods').select('*').order('coverage_start_date',{ascending:false});
+  if(error){document.getElementById('policyPeriodBody').innerHTML=`<tr><td colspan="7" style="text-align:center;padding:16px;color:#dc2626">โหลดไม่สำเร็จ: ${esc(error.message)}${error.message.includes('does not exist')?' — รัน migration_insurance_policy_periods.sql ก่อน':''}</td></tr>`;return;}
+  policyPeriods=data||[];
+  const todayIso=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'});
+  insuranceSettings=policyPeriods.find(p=>p.coverage_start_date<=todayIso&&p.coverage_end_date>=todayIso) || policyPeriods[0] || null;
+  document.getElementById('statCurrentPeriod').textContent=insuranceSettings?insuranceSettings.policy_year_label:'-';
+  renderPolicyPeriodTable();
+  await refreshBudgetStats();
+}
+function renderPolicyPeriodTable(){
+  const tbody=document.getElementById('policyPeriodBody');
+  if(!policyPeriods.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:16px;color:#94a3b8">ยังไม่มีรอบกรมธรรม์ — กดเพิ่มรอบแรกด้านบน</td></tr>';return;}
+  tbody.innerHTML=policyPeriods.map(p=>{
+    const isCurrent=insuranceSettings&&p.id===insuranceSettings.id;
+    return `<tr style="${isCurrent?'background:#eff6ff':''}">
+      <td>${esc(p.policy_year_label)}${isCurrent?' <span style="color:#2563eb;font-size:11px">● ปัจจุบัน</span>':''}</td>
+      <td>${thaiDateFull(p.coverage_start_date)} – ${thaiDateFull(p.coverage_end_date)}</td>
+      <td>${p.age_threshold} ปี (สูงสุด ${p.max_insurable_age||85} ปี)</td>
+      <td>${Number(p.premium_under_threshold).toLocaleString('th-TH')} / ${Number(p.premium_over_threshold).toLocaleString('th-TH')}</td>
+      <td>${Number(p.health_amount||0).toLocaleString('th-TH')} / ${Number(p.accident_amount||0).toLocaleString('th-TH')}</td>
+      <td>${p.signed_date?thaiDateFull(p.signed_date):'<span style="color:#dc2626">ยังไม่ลงนาม</span>'}${p.signed_by_note?'<br><span style="font-size:11px;color:#64748b">'+esc(p.signed_by_note)+'</span>':''}</td>
+      <td><button class="btn btn-outline" style="padding:3px 9px;font-size:12px" onclick="openPolicyPeriodForm('${p.id}')">แก้ไข</button></td>
+    </tr>`;
+  }).join('');
+}
+function openPolicyPeriodForm(id){
+  document.getElementById('policyPeriodForm').style.display='block';
+  document.getElementById('pp_id').value=id||'';
+  const p=id?policyPeriods.find(x=>x.id===id):null;
+  document.getElementById('pp_label').value=p?p.policy_year_label:'';
+  document.getElementById('pp_start').value=p?p.coverage_start_date:'';
+  document.getElementById('pp_end').value=p?p.coverage_end_date:'';
+  document.getElementById('pp_health').value=p?p.health_amount:(insuranceSettings?insuranceSettings.health_amount:'');
+  document.getElementById('pp_accident').value=p?p.accident_amount:(insuranceSettings?insuranceSettings.accident_amount:'');
+  document.getElementById('pp_age_threshold').value=p?p.age_threshold:(insuranceSettings?insuranceSettings.age_threshold:65);
+  document.getElementById('pp_premium_under').value=p?p.premium_under_threshold:'';
+  document.getElementById('pp_premium_over').value=p?p.premium_over_threshold:'';
+  document.getElementById('pp_max_age').value=p?p.max_insurable_age:(insuranceSettings?insuranceSettings.max_insurable_age:85);
+  document.getElementById('pp_policy_no').value=p?(p.policy_no||''):'';
+  document.getElementById('pp_signed_date').value=p?(p.signed_date||''):'';
+  document.getElementById('pp_signed_by').value=p?(p.signed_by_note||''):'';
+}
+function closePolicyPeriodForm(){document.getElementById('policyPeriodForm').style.display='none';}
+
+async function savePolicyPeriod(){
+  const id=document.getElementById('pp_id').value||null;
+  const label=document.getElementById('pp_label').value.trim();
+  const start=document.getElementById('pp_start').value;
+  const end=document.getElementById('pp_end').value;
+  if(!label||!start||!end){showToast('กรุณากรอกปีกรมธรรม์และช่วงวันคุ้มครองให้ครบ',true);return;}
+  if(end<=start){showToast('วันสิ้นสุดต้องอยู่หลังวันเริ่มคุ้มครอง',true);return;}
+  const payload={
+    policy_year_label:label, coverage_start_date:start, coverage_end_date:end,
+    age_threshold:parseFloat(document.getElementById('pp_age_threshold').value)||65,
+    premium_under_threshold:parseFloat(document.getElementById('pp_premium_under').value)||0,
+    premium_over_threshold:parseFloat(document.getElementById('pp_premium_over').value)||0,
+    max_insurable_age:parseFloat(document.getElementById('pp_max_age').value)||85,
+    health_amount:parseFloat(document.getElementById('pp_health').value)||0,
+    accident_amount:parseFloat(document.getElementById('pp_accident').value)||0,
+    policy_no:document.getElementById('pp_policy_no').value.trim()||null,
+    signed_date:document.getElementById('pp_signed_date').value||null,
+    signed_by_note:document.getElementById('pp_signed_by').value.trim()||null,
+  };
+  let error;
+  if(id){({error}=await sb.from('insurance_policy_periods').update(payload).eq('id',id));}
+  else{payload.created_by=currentUser.id;({error}=await sb.from('insurance_policy_periods').insert(payload));}
+  if(error){showToast('บันทึกไม่สำเร็จ: '+error.message,true);return;}
+  showToast('บันทึกรอบกรมธรรม์สำเร็จ');
+  closePolicyPeriodForm();
+  await loadPolicyPeriods();
+}
+
+function addDaysIso(iso,days){
+  // แก้บั๊ก timezone: เดิม new Date(iso+'T00:00:00') ถูก parse เป็นเวลาไทย (UTC+7)
+  // แล้วพอ .toISOString() แปลงกลับเป็น UTC วันที่จะถอยหลัง 1 วันเสมอ (เที่ยงคืนไทย = 17:00 UTC ของเมื่อวาน)
+  // แก้โดยคำนวณล้วนในกรอบ UTC ไม่ผ่าน local time เลย จึงไม่มีการเลื่อนวัน
+  const[y,m,d0]=iso.split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d0));
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return dt.toISOString().slice(0,10);
+}
+
+async function refreshBudgetStats(){
+  const{data:members,error}=await sb.from('insurance_members').select('staff_id').eq('status','active');
+  if(error){showToast('โหลดสมาชิก Active ไม่สำเร็จ: '+error.message,true);return;}
+  const activeCount=members?members.length:0;
+  document.getElementById('statBudgetActive').textContent=activeCount;
+
+  if(!fullStaffForNotify.length)await loadFullStaffForNotify();
+  const staffBirthMap={};fullStaffForNotify.forEach(s=>staffBirthMap[s.id]=s.birth_date);
+  const threshold=insuranceSettings?insuranceSettings.age_threshold:65;
+  const maxAge=insuranceSettings?(insuranceSettings.max_insurable_age||85):85;
+  const rateUnder=insuranceSettings?insuranceSettings.premium_under_threshold:0;
+  const rateOver=insuranceSettings?insuranceSettings.premium_over_threshold:0;
+  // อายุที่ใช้ตัดสินเรท/สิทธิ์ คำนวณ ณ วันก่อนวันเริ่มคุ้มครองรอบนี้ 1 วัน ตามกติกาบริษัทประกัน (ไม่ใช่วันนี้)
+  const refDate=insuranceSettings?addDaysIso(insuranceSettings.coverage_start_date,-1):new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'});
+
+  let total=0,missingBirth=0,excludedOverAge=0;
+  (members||[]).forEach(m=>{
+    const birth=staffBirthMap[m.staff_id];
+    if(!birth){missingBirth++;total+=rateUnder;return;} // ไม่มีวันเกิดในระบบ ใช้เรทอายุน้อยไปก่อนกันงบขาด (จะเตือนด้านล่าง)
+    const age=calcAge(birth,refDate);
+    if(age>maxAge){excludedOverAge++;return;} // เกินอายุสูงสุดที่รับประกันได้ — บริษัทไม่รับต่ออายุแล้ว ไม่นับในงบ
+    total += age>threshold ? rateOver : rateUnder;
+  });
+  document.getElementById('statBudgetTotal').textContent=total.toLocaleString('th-TH',{maximumFractionDigits:0});
+  const warnEl=document.getElementById('statBudgetWarn');
+  const warnParts=[];
+  if(missingBirth)warnParts.push(`⚠️ มีสมาชิก ${missingBirth} คนไม่มีวันเกิดในระบบ ใช้เรทอายุไม่เกินเกณฑ์ไปก่อน — กรอกวันเกิดที่หน้าข้อมูลเจ้าหน้าที่เพื่อความแม่นยำ`);
+  if(excludedOverAge)warnParts.push(`🚫 มีสมาชิก ${excludedOverAge} คนอายุเกิน ${maxAge} ปี (คำนวณ ณ ${thaiDateFull(refDate)}) — บริษัทประกันจะไม่รับต่ออายุให้แล้ว ไม่ได้รวมในประมาณการงบด้านบน ต้องตรวจสอบ/แจ้งเปลี่ยนสถานะสมาชิกในตาราง "สมาชิกกรมธรรม์"`);
+  if(warnEl)warnEl.innerHTML=warnParts.join('<br>');
+}
+
+async function loadFullStaffForNotify(){
+  const{data,error}=await sb.from('staff').select('id,employee_code,id_card,prefix,first_name,last_name,birth_date,position,department,start_date,status,resignation_date');
+  if(error){showToast('โหลดข้อมูลเจ้าหน้าที่ไม่สำเร็จ: '+error.message,true);return;}
+  fullStaffForNotify=data||[];
+}
+
+function notifyRowHTML(row,type,idx){
+  const s=row.staff;
+  const nameFull=`${s.prefix||''}${s.first_name||''} ${s.last_name||''}`;
+  if(type==='in'){
+    return `<tr data-idx="${idx}">
+      <td><input type="checkbox" class="notify-chk" ${row.checked?'checked':''} onchange="notifyRowsIn[${idx}].checked=this.checked"></td>
+      <td>${esc(s.employee_code||'-')}</td><td>${esc(nameFull)}</td><td>${esc(s.position||'-')}</td><td>${esc(s.department||'-')}</td>
+      <td>${thaiDateFull(row.event_date)}</td>
+      <td><input type="text" value="${esc(row.remark)}" style="width:100%" oninput="notifyRowsIn[${idx}].remark=this.value"></td>
+      <td><button class="btn btn-secondary" style="padding:2px 8px;font-size:11px" onclick="removeNotifyRow('in',${idx})">ลบ</button></td>
+    </tr>`;
+  }
+  return `<tr data-idx="${idx}">
+    <td><input type="checkbox" class="notify-chk" ${row.checked?'checked':''} onchange="notifyRowsOut[${idx}].checked=this.checked"></td>
+    <td>${esc(s.employee_code||'-')}</td><td>${esc(nameFull)}</td><td>${esc(s.position||'-')}</td><td>${esc(s.department||'-')}</td>
+    <td>${exitReasonLabel[row.reason]||row.reason}</td>
+    <td>${thaiDateFull(row.event_date)}</td>
+    <td><input type="text" value="${esc(row.remark)}" style="width:100%" oninput="notifyRowsOut[${idx}].remark=this.value"></td>
+    <td><button class="btn btn-secondary" style="padding:2px 8px;font-size:11px" onclick="removeNotifyRow('out',${idx})">ลบ</button></td>
+  </tr>`;
+}
+function renderNotifyTable(type){
+  const rows=type==='in'?notifyRowsIn:notifyRowsOut;
+  const body=document.getElementById(type==='in'?'notifyInBody':'notifyOutBody');
+  if(!rows.length){body.innerHTML=`<tr><td colspan="${type==='in'?8:9}" class="empty-state">ไม่พบรายชื่อเข้าเกณฑ์ในเดือนนี้ — เพิ่มเองได้ถ้าจำเป็น</td></tr>`;return;}
+  body.innerHTML=rows.map((r,i)=>notifyRowHTML(r,type,i)).join('');
+}
+function toggleAllNotify(type){
+  const all=document.getElementById(type==='in'?'notifyInSelectAll':'notifyOutSelectAll').checked;
+  const rows=type==='in'?notifyRowsIn:notifyRowsOut;
+  rows.forEach(r=>r.checked=all);
+  renderNotifyTable(type);
+}
+function removeNotifyRow(type,idx){
+  if(type==='in')notifyRowsIn.splice(idx,1);else notifyRowsOut.splice(idx,1);
+  renderNotifyTable(type);
+}
+
+async function scanNotifyCandidates(){
+  const monthVal=document.getElementById('notifyMonth').value; // 'YYYY-MM'
+  if(!monthVal){showToast('กรุณาเลือกเดือนก่อน',true);return;}
+  if(!fullStaffForNotify.length)await loadFullStaffForNotify();
+
+  const[y,m]=monthVal.split('-').map(Number);
+  const monthStart=`${y}-${String(m).padStart(2,'0')}-01`;
+  const monthEndDate=new Date(y,m,0).getDate();
+  const monthEnd=`${y}-${String(m).padStart(2,'0')}-${String(monthEndDate).padStart(2,'0')}`;
+
+  // กันซ้ำ: staff ที่ถูกบันทึกไปแล้วในเดือนนี้ ประเภทนี้
+  const{data:already}=await sb.from('insurance_notify_log').select('staff_id,notify_type').eq('notify_month',monthVal);
+  const alreadyIn=new Set((already||[]).filter(x=>x.notify_type==='in').map(x=>x.staff_id));
+  const alreadyOut=new Set((already||[]).filter(x=>x.notify_type==='out').map(x=>x.staff_id));
+
+  notifyRowsIn=fullStaffForNotify.filter(s=>s.status==='active'&&s.start_date>=monthStart&&s.start_date<=monthEnd&&!alreadyIn.has(s.id))
+    .map(s=>({staff:s,checked:true,event_date:s.start_date,remark:`บรรจุ ${thaiDateShort(s.start_date)}`}));
+
+  notifyRowsOut=fullStaffForNotify.filter(s=>['resigned','retired','deceased','terminated'].includes(s.status)&&s.resignation_date&&s.resignation_date>=monthStart&&s.resignation_date<=monthEnd&&!alreadyOut.has(s.id))
+    .map(s=>({staff:s,checked:true,event_date:s.resignation_date,reason:s.status,remark:`${exitReasonLabel[s.status]} ${thaiDateShort(s.resignation_date)}`}));
+
+  renderNotifyTable('in');renderNotifyTable('out');
+  showToast(`พบแจ้งเข้า ${notifyRowsIn.length} รายการ, แจ้งออก ${notifyRowsOut.length} รายการ`);
+}
+
+function addManualNotifyRow(type){
+  manualAddType=type;
+  document.getElementById('manualAddSearch').value='';
+  document.getElementById('manualAddResults').innerHTML='';
+  document.getElementById('manualAddPreview').style.display='none';
+  document.getElementById('manualAddModal').style.display='flex';
+  document.getElementById('manualAddSearch').focus();
+}
+function closeManualAddModal(){document.getElementById('manualAddModal').style.display='none';}
+
+function filterManualAddResults(){
+  const q=document.getElementById('manualAddSearch').value.trim().toLowerCase();
+  const box=document.getElementById('manualAddResults');
+  document.getElementById('manualAddPreview').style.display='none';
+  if(!q){box.innerHTML='';return;}
+  const matches=fullStaffForNotify.filter(s=>`${s.prefix||''}${s.first_name||''} ${s.last_name||''}`.toLowerCase().includes(q)).slice(0,20);
+  if(!matches.length){box.innerHTML='<div style="padding:10px;color:#94a3b8;font-size:12.5px">ไม่พบรายชื่อ</div>';return;}
+  box.innerHTML=matches.map(s=>`<div class="manual-add-result" onclick="selectManualAddStaff('${s.id}')" style="padding:8px 10px;border-bottom:1px solid #f1f5f9;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+    <strong>${esc((s.prefix||'')+(s.first_name||'')+' '+(s.last_name||''))}</strong>
+    <span style="color:#94a3b8;font-size:12px"> — ${esc(s.department||'-')}</span>
+  </div>`).join('');
+}
+
+let manualAddType=null, manualAddSelected=null;
+function selectManualAddStaff(staffId){
+  const s=fullStaffForNotify.find(x=>x.id===staffId);
+  if(!s)return;
+  manualAddSelected=s;
+  document.getElementById('manualAddResults').innerHTML='';
+  document.getElementById('manualAddSearch').value=(s.prefix||'')+(s.first_name||'')+' '+(s.last_name||'');
+  document.getElementById('mv_name').textContent=(s.prefix||'')+(s.first_name||'')+' '+(s.last_name||'');
+  document.getElementById('mv_idcard').textContent=s.id_card||'-';
+  document.getElementById('mv_birth').textContent=s.birth_date?thaiDateFull(s.birth_date):'-';
+  document.getElementById('mv_age').textContent=s.birth_date?calcAge(s.birth_date)+' ปี':'-';
+  document.getElementById('mv_dept').textContent=s.department||'-';
+  const defaultRemark=manualAddType==='in'
+    ? `บรรจุ ${thaiDateShort(s.start_date)}`
+    : (s.status&&exitReasonLabel[s.status]?`${exitReasonLabel[s.status]} ${thaiDateShort(s.resignation_date)}`:'');
+  document.getElementById('mv_remark').value=defaultRemark;
+  document.getElementById('manualAddPreview').style.display='block';
+}
+function confirmManualAdd(){
+  const s=manualAddSelected;
+  if(!s){showToast('กรุณาเลือกรายชื่อก่อน',true);return;}
+  const remark=document.getElementById('mv_remark').value.trim();
+  if(!remark){showToast('กรุณาระบุหมายเหตุ/เหตุผล',true);return;}
+  const monthVal=document.getElementById('notifyMonth').value;
+  if(manualAddType==='in'){
+    notifyRowsIn.push({staff:s,checked:true,event_date:s.start_date||monthVal+'-01',remark});
+    renderNotifyTable('in');
+  }else{
+    const reason=s.status&&exitReasonLabel[s.status]?s.status:'resigned';
+    notifyRowsOut.push({staff:s,checked:true,event_date:s.resignation_date||monthVal+'-01',reason,remark});
+    renderNotifyTable('out');
+  }
+  closeManualAddModal();
+}
+
+async function saveNotifyBatch(type){
+  const monthVal=document.getElementById('notifyMonth').value;
+  if(!monthVal){showToast('กรุณาเลือกเดือนก่อน',true);return;}
+  const rows=(type==='in'?notifyRowsIn:notifyRowsOut).filter(r=>r.checked);
+  if(!rows.length){showToast('ยังไม่ได้ติ๊กเลือกรายการใดเลย',true);return;}
+
+  const payload=rows.map(r=>({
+    staff_id:r.staff.id,notify_type:type,notify_month:monthVal,event_date:r.event_date,
+    reason:type==='out'?r.reason:null,remark:r.remark,
+    id_card:r.staff.id_card,employee_code:r.staff.employee_code,prefix:r.staff.prefix,
+    first_name:r.staff.first_name,last_name:r.staff.last_name,birth_date:r.staff.birth_date,
+    position:r.staff.position,department:r.staff.department,created_by:currentUser.id,
+  }));
+  const{error}=await sb.from('insurance_notify_log').insert(payload);
+  if(error){showToast('บันทึกไม่สำเร็จ: '+error.message,true);return;}
+
+  // ถ้าเป็นแจ้งออก และมีสมาชิกกรมธรรม์อยู่แล้ว ปรับสถานะเป็น inactive ให้อัตโนมัติ
+  if(type==='out'){
+    for(const r of rows){
+      await sb.from('insurance_members').update({status:'inactive'}).eq('staff_id',r.staff.id).eq('status','active');
+    }
+  }
+  showToast(`บันทึกรายการแจ้ง${type==='in'?'เข้า':'ออก'}สำเร็จ ${rows.length} รายการ`);
+  if(type==='in')notifyRowsIn=notifyRowsIn.filter(r=>!r.checked);else notifyRowsOut=notifyRowsOut.filter(r=>!r.checked);
+  renderNotifyTable(type);
+  await loadNotifyMonthOptions();
+  await refreshBudgetStats();
+}
+
+async function loadNotifyMonthOptions(){
+  const{data}=await sb.from('insurance_notify_log').select('notify_month').order('notify_month',{ascending:false});
+  const months=[...new Set((data||[]).map(x=>x.notify_month))];
+  const sel=document.getElementById('historyMonthFilter');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">-- เลือกเดือน --</option>'+months.map(m=>`<option value="${m}">${m}</option>`).join('');
+  if(months.includes(cur))sel.value=cur;
+}
+async function loadNotifyHistory(){
+  const monthVal=document.getElementById('historyMonthFilter').value;
+  const body=document.getElementById('historyBody');
+  if(!monthVal){body.innerHTML='<tr><td colspan="8" class="empty-state">เลือกเดือนด้านบน</td></tr>';return;}
+  const{data,error}=await sb.from('insurance_notify_log').select('*').eq('notify_month',monthVal).order('notify_type').order('created_at');
+  if(error){body.innerHTML=`<tr><td colspan="8">โหลดไม่สำเร็จ: ${esc(error.message)}</td></tr>`;return;}
+  if(!data||!data.length){body.innerHTML='<tr><td colspan="8" class="empty-state">ไม่มีรายการเดือนนี้</td></tr>';return;}
+  body.innerHTML=data.map(r=>`<tr>
+    <td>${r.notify_type==='in'?'📥 เข้า':'📤 ออก'}</td><td>${esc(r.employee_code||'-')}</td>
+    <td>${esc((r.prefix||'')+(r.first_name||'')+' '+(r.last_name||''))}</td><td>${esc(r.position||'-')}</td>
+    <td>${thaiDateFull(r.event_date)}</td><td>${esc(r.remark||'')}</td>
+    <td>${new Date(r.created_at).toLocaleDateString('th-TH')}</td>
+    <td><button class="btn btn-secondary" style="padding:2px 8px;font-size:11px" onclick="deleteNotifyLogRow('${r.id}')">ลบ</button></td>
+  </tr>`).join('');
+}
+async function deleteNotifyLogRow(id){
+  if(!confirm('ลบรายการนี้ออกจากประวัติการแจ้ง? (จะไม่กระทบสถานะเจ้าหน้าที่ที่บันทึกไปแล้ว)'))return;
+  const{error}=await sb.from('insurance_notify_log').delete().eq('id',id);
+  if(error){showToast('ลบไม่สำเร็จ: '+error.message,true);return;}
+  showToast('ลบสำเร็จ');
+  loadNotifyHistory();loadNotifyMonthOptions();
+}
+
+// สร้าง sheet ตามเทมเพลตเทเวศ: ลำดับที่/เลขบัตร ปชช./รหัสพนักงาน/คำนำหน้า/ชื่อ/สกุล/ว-ด-ป เกิด/อายุ/ตำแหน่ง/หมายเหตุ
+function buildNotifySheet(rows,asOfIso){
+  const aoa=[
+    Array(10).fill(''),
+    ['ลำดับที่','เลขที่บัตรประชาชน','รหัสพนักงาน','ชื่อ - สกุล','','','ว/ด/ป (เกิด)','อายุ','ตำแหน่ง','หมายเหตุ'],
+    Array(10).fill(''),
+  ];
+  rows.forEach((r,i)=>{
+    aoa.push([i+1,r.id_card||'',r.employee_code||'',r.prefix||'',r.first_name||'',r.last_name||'',r.birth_date||'',calcAge(r.birth_date,asOfIso),r.position||'',r.remark||'']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges']=[{s:{r:1,c:3},e:{r:1,c:5}}];
+  ws['!cols']=[{wch:6},{wch:16},{wch:10},{wch:10},{wch:14},{wch:16},{wch:12},{wch:6},{wch:28},{wch:18}];
+  return ws;
+}
+function buildHeadcountSheet(){
+  const ageThreshold=insuranceSettings?insuranceSettings.age_threshold:65;
+  const activeInsured=fullStaffForNotify.filter(s=>s.status==='active');
+  const byDept={};
+  activeInsured.forEach(s=>{
+    const age=calcAge(s.birth_date);
+    if(age>=ageThreshold)return;
+    const d=s.department||'ไม่ระบุ';
+    byDept[d]=(byDept[d]||0)+1;
+  });
+  const aoa=[['ลำดับ','สังกัด','จำนวน (คน)']];
+  Object.keys(byDept).sort().forEach((d,i)=>aoa.push([i+1,d,byDept[d]]));
+  return XLSX.utils.aoa_to_sheet(aoa);
+}
+
+async function exportNotifyExcel(type){
+  const monthVal=document.getElementById('historyMonthFilter').value;
+  if(!monthVal){showToast('กรุณาเลือกเดือนที่จะ Export จากช่อง "ประวัติการแจ้ง" ก่อน',true);return;}
+  const{data,error}=await sb.from('insurance_notify_log').select('*').eq('notify_month',monthVal).eq('notify_type',type).order('created_at');
+  if(error){showToast('โหลดข้อมูลไม่สำเร็จ: '+error.message,true);return;}
+  if(!data||!data.length){showToast(`ไม่มีรายการแจ้ง${type==='in'?'เข้า':'ออก'}ในเดือนนี้`,true);return;}
+
+  if(!fullStaffForNotify.length)await loadFullStaffForNotify();
+  const asOf=monthVal+'-01';
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,buildNotifySheet(data,asOf),type==='in'?'เจ้าหน้าเข้า':'แจ้งออก');
+
+  // อายุครบเกณฑ์+ : สมาชิกที่ครบอายุเกณฑ์ในช่วงเดือนนี้ (auto age-out จากความคุ้มครอง แยกจากเหตุผลลาออก/เกษียณปกติ)
+  const ageThreshold=insuranceSettings?insuranceSettings.age_threshold:65;
+  const age65 = fullStaffForNotify.filter(s=>{
+    if(s.status!=='active')return false;
+    const age=calcAge(s.birth_date,asOf);
+    return age>=ageThreshold;
+  }).map((s,i)=>({id_card:s.id_card,employee_code:s.employee_code,prefix:s.prefix,first_name:s.first_name,last_name:s.last_name,birth_date:s.birth_date,position:s.position,remark:`ครบอายุ ${ageThreshold} ปี`}));
+  XLSX.utils.book_append_sheet(wb,buildNotifySheet(age65,monthVal+'-01'),`อายุ ${ageThreshold} ปี+`);
+
+  if(type==='in'){
+    XLSX.utils.book_append_sheet(wb,buildHeadcountSheet(),'จำนวน จนท. (ปกติ)');
+  }
+  XLSX.writeFile(wb,`7_ข้อมูลส่งบริษัทประกัน_แจ้ง${type==='in'?'เข้า':'ออก'}_${monthVal}.xlsx`);
+  await sb.from('insurance_notify_log').update({exported_at:new Date().toISOString()}).eq('notify_month',monthVal).eq('notify_type',type);
+  showToast('Export สำเร็จ');
+}
+
+// ===================== นำเข้าสมาชิกจากไฟล์แจ้งต่ออายุ (จับคู่เลขบัตรประชาชน) =====================
+let miParsedResult=null;
+
+function miNum(v){const n=parseFloat(v);return isNaN(n)?0:n;}
+
+function processMemberImportFile(){
+  const file=document.getElementById('memberImportFile').files[0];
+  if(!file){showToast('กรุณาเลือกไฟล์ก่อน',true);return;}
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      // ไฟล์ต่ออายุมักมีหลายชีท (ชีทเดิม/ชีทต่ออายุ) — ใช้ชีทสุดท้าย (ล่าสุด) เป็นค่าเริ่มต้น
+      const ws=wb.Sheets[wb.SheetNames[wb.SheetNames.length-1]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // หาแถวหัวตาราง (มีคำว่า "เลขที่บัตรประชาชน")
+      let headerRowIdx=rows.findIndex(r=>r.some(c=>String(c).includes('เลขที่บัตรประชาชน')));
+      if(headerRowIdx<0){showToast('ไม่พบหัวตารางที่คาดไว้ในไฟล์นี้ (ต้องมีคอลัมน์ "เลขที่บัตรประชาชน")',true);return;}
+      const header=rows[headerRowIdx];
+      const idx={
+        idCard:header.findIndex(c=>String(c).includes('เลขที่บัตรประชาชน')),
+        prefix:header.findIndex(c=>String(c).trim()==='คำนำหน้า'||String(c).includes('ชื่อ - นามสกุล')),
+        position:header.findIndex(c=>String(c).includes('ตำแหน่ง')),
+        department:header.findIndex(c=>String(c).includes('หน่วยงาน')),
+      };
+      // จำนวนเงินฯ สุขภาพ/อุบัติเหตุ มักอยู่ในแถวถัดไป (แถว sub-header) ให้หาคอลัมน์จากแถวถัดจาก header
+      const subHeader=rows[headerRowIdx+1]||[];
+      const healthCol=subHeader.findIndex(c=>String(c).includes('สุขภาพ'));
+      const accidentCol=subHeader.findIndex(c=>String(c).includes('อุบัติเหตุ'));
+      const dataStart=headerRowIdx+2;
+
+      const matched=[],unmatched=[];
+      for(let i=dataStart;i<rows.length;i++){
+        const r=rows[i];
+        if(!r||!r.length)continue;
+        const idCard=String(r[idx.idCard]||'').trim();
+        if(!idCard||idCard.length<10)continue;
+        const namePart=`${r[idx.prefix]||''}${r[idx.prefix+1]||''} ${r[idx.prefix+2]||''}`.trim();
+        const info={
+          idCard, name:namePart,
+          position:idx.position>=0?r[idx.position]:'',
+          department:idx.department>=0?r[idx.department]:'',
+          health:healthCol>=0?miNum(r[healthCol]):null,
+          accident:accidentCol>=0?miNum(r[accidentCol]):null,
+        };
+        const staff=staffByIdCardMI[idCard];
+        if(staff)matched.push({...info,staffId:staff.id});
+        else unmatched.push(info);
+      }
+      miParsedResult={matched,unmatched};
+      renderMemberImportPreview();
+    }catch(err){
+      showToast('อ่านไฟล์ไม่สำเร็จ: '+err.message,true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+let staffByIdCardMI={};
+async function loadStaffIndexMI(){
+  const{data,error}=await sb.from('staff').select('id,id_card').not('id_card','is',null);
+  if(error)return;
+  staffByIdCardMI={};
+  (data||[]).forEach(s=>{staffByIdCardMI[String(s.id_card).trim()]=s;});
+}
+
+function renderMemberImportPreview(){
+  const{matched,unmatched}=miParsedResult;
+  document.getElementById('memberImportPreview').style.display='block';
+  document.getElementById('miStatTotal').textContent=matched.length+unmatched.length;
+  document.getElementById('miStatMatched').textContent=matched.length;
+  document.getElementById('miStatUnmatched').textContent=unmatched.length;
+  document.getElementById('miConfirmCount').textContent=matched.length;
+  const uWrap=document.getElementById('miUnmatchedWrap');
+  if(unmatched.length){
+    uWrap.style.display='block';
+    document.getElementById('miUnmatchedBody').innerHTML=unmatched.map(u=>`<tr><td>${esc(u.idCard)}</td><td>${esc(u.name)}</td></tr>`).join('');
+  }else{uWrap.style.display='none';}
+}
+
+async function confirmMemberImport(){
+  if(!miParsedResult||!miParsedResult.matched.length){showToast('ไม่มีข้อมูลที่จับคู่ได้ให้นำเข้า',true);return;}
+  if(!insuranceSettings){showToast('ไม่พบรอบกรมธรรม์ปัจจุบัน กรุณาตั้งค่ารอบกรมธรรม์ก่อน',true);return;}
+  if(!confirm(`ยืนยันนำเข้าสมาชิก ${miParsedResult.matched.length} รายการ เข้ารอบกรมธรรม์ "${insuranceSettings.policy_year_label}"?\nถ้ามีคนนี้เป็นสมาชิก active อยู่แล้วจะอัปเดตวงเงินคุ้มครองให้`))return;
+
+  const logEl=document.getElementById('miImportLog');
+  const btn=document.querySelector('[onclick="confirmMemberImport()"]');
+  if(btn)btn.disabled=true;
+  logEl.innerHTML='กำลังนำเข้า...';
+  let okCount=0,errCount=0,errMsg='';
+  try{
+    // เดิมส่งคำสั่งทีละคน (เช็ค + เพิ่ม/แก้ = 2 ครั้งต่อคน → ~1,600 ครั้งสำหรับ 800 คน ช้ามาก)
+    // ใหม่: ดึงสมาชิก active ที่มีอยู่ทั้งหมดในครั้งเดียว แล้วเพิ่ม/แก้เป็นชุดละ 200 รายการ
+    const CHUNK=200;
+    const policyYearBE=insuranceSettings.coverage_start_date?Number(insuranceSettings.coverage_start_date.slice(0,4))+543:null;
+    const byStaff=new Map(); // ถ้าไฟล์มีคนซ้ำ ใช้แถวสุดท้าย (ผลเดียวกับแบบเดิม)
+    for(const r of miParsedResult.matched)byStaff.set(r.staffId,r);
+    const staffIds=[...byStaff.keys()];
+
+    // 1) สมาชิก active ที่มีอยู่แล้ว
+    const existingId=new Map();
+    for(let i=0;i<staffIds.length;i+=CHUNK){
+      const ids=staffIds.slice(i,i+CHUNK);
+      const{data,error}=await sb.from('insurance_members').select('id,staff_id').eq('status','active').in('staff_id',ids);
+      if(error)throw error;
+      (data||[]).forEach(m=>{if(!existingId.has(m.staff_id))existingId.set(m.staff_id,m.id);});
+    }
+
+    // 2) เตรียมข้อมูล แยกกลุ่มแก้ไข / เพิ่มใหม่
+    const toUpdate=[],toInsert=[];
+    for(const r of byStaff.values()){
+      const payload={
+        staff_id:r.staffId, policy_no:insuranceSettings.policy_no||null,
+        policy_year_be:policyYearBE,
+        coverage_plan:r.position||null,
+        health_amount:r.health!=null?r.health:insuranceSettings.health_amount,
+        accident_amount:r.accident!=null?r.accident:insuranceSettings.accident_amount,
+        status:'active',
+        effective_date:insuranceSettings.coverage_start_date,
+        expiry_date:insuranceSettings.coverage_end_date,
+        created_by:currentUser.id,
+      };
+      const id=existingId.get(r.staffId);
+      if(id)toUpdate.push({id,...payload});else toInsert.push(payload);
+    }
+
+    // 3) ส่งเป็นชุด พร้อมแสดงความคืบหน้า
+    const total=toUpdate.length+toInsert.length;
+    const progress=()=>{logEl.innerHTML=`กำลังนำเข้า... ${okCount+errCount} / ${total} รายการ`;};
+    progress();
+    for(let i=0;i<toUpdate.length;i+=CHUNK){
+      const chunk=toUpdate.slice(i,i+CHUNK);
+      const{error}=await sb.from('insurance_members').upsert(chunk,{onConflict:'id'});
+      if(error){errCount+=chunk.length;errMsg=error.message;}else okCount+=chunk.length;
+      progress();
+    }
+    for(let i=0;i<toInsert.length;i+=CHUNK){
+      const chunk=toInsert.slice(i,i+CHUNK);
+      const{error}=await sb.from('insurance_members').insert(chunk);
+      if(error){errCount+=chunk.length;errMsg=error.message;}else okCount+=chunk.length;
+      progress();
+    }
+  }catch(e){
+    errMsg=e.message||String(e);
+    errCount=Math.max(errCount,miParsedResult.matched.length-okCount);
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+  if(errMsg)console.error('นำเข้าสมาชิกประกัน:',errMsg);
+  logEl.innerHTML=errCount
+    ? `<span style="color:#dc2626">นำเข้าสำเร็จ ${okCount} รายการ, ล้มเหลว ${errCount} รายการ${errMsg?' — '+String(errMsg).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])):''}</span>`
+    : `<span style="color:#16a34a">✓ นำเข้า/อัปเดตสมาชิกสำเร็จ ${okCount} รายการ</span>`;
+  showToast(`นำเข้าสมาชิกประกันสำเร็จ ${okCount} รายการ`,errCount>0);
+  await loadMembers();
+}
+
+(async function init(){
+  startLiveClock();
+  const ok=await authGuard();if(!ok)return;
+  if(currentProfile.role!=='super'){document.getElementById('noAccessView').style.display='block';return;}
+  document.getElementById('mainView').style.display='block';
+  await loadStaffList();
+  await initPolicyYearOptions();
+  await loadMembers();
+
+  document.getElementById('notifyMonth').value=new Date().toISOString().slice(0,7);
+  await loadPolicyPeriods();
+  await loadFullStaffForNotify();
+  await loadNotifyMonthOptions();
+  await loadStaffIndexMI();
+})();
+
+// ============================================================
+// กระดิ่งแจ้งเตือนรวมศูนย์ (เพิ่มโดย Claude)
+// ทำงานแบบอิสระ ไม่พึ่งชื่อตัวแปรของแต่ละหน้า (เพราะแต่ละไฟล์ตั้งชื่อตัวแปร currentUser/currentProfile ไม่ตรงกัน
+// บางไฟล์ถึงกับไม่มีตัวแปรเหล่านี้เลย เช่น dashboard.html) — ดึง session/role/department ของตัวเองโดยตรง
+// ============================================================
+let ntfUser = null, ntfRole = null, ntfDept = null, ntfList = [], ntfChannel = null;
+
+function ntfSb() {
+  if (typeof sb !== 'undefined' && sb) return sb;
+  if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+  return null;
+}
+
+async function ntfWaitForAuth() {
+  const client = ntfSb();
+  if (!client) { setTimeout(ntfWaitForAuth, 400); return; }
+  try {
+    const { data } = await client.auth.getSession();
+    if (!data || !data.session) { setTimeout(ntfWaitForAuth, 400); return; }
+    ntfUser = data.session.user;
+    const { data: profile } = await client.from('profiles').select('role,department').eq('id', ntfUser.id).maybeSingle();
+    if (profile) { ntfRole = profile.role; ntfDept = profile.department; }
+  } catch (e) { setTimeout(ntfWaitForAuth, 800); return; }
+  ntfInit();
+}
+
+async function ntfInit() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  await ntfLoad();
+  if (ntfChannel) return; // กันสมัคร realtime ซ้ำ
+  ntfChannel = client.channel('ntf-bell-' + ntfUser.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, () => ntfLoad())
+    .subscribe();
+  setInterval(ntfLoad, 60000); // รีเฟรชสำรองทุก 1 นาที เผื่อ realtime หลุดหรือพลาดไป
+}
+
+async function ntfLoad() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  // ระบบเดิมเคยใช้ชื่อคอลัมน์ recipient_department/recipient_user_id มาก่อน ส่วนที่เพิ่มใหม่ใช้ department/recipient_id
+  // ดึงแบบครอบคลุมทั้ง 2 แบบไว้ก่อน แล้วค่อยกรองซ้ำอีกทีฝั่ง JS ให้แม่นยำ
+  const orParts = [`recipient_id.eq.${ntfUser.id}`, `recipient_user_id.eq.${ntfUser.id}`];
+  if (ntfRole) orParts.push(`recipient_role.eq.${ntfRole}`);
+  if (ntfDept) orParts.push(`recipient_department.eq.${encodeURIComponent(ntfDept)}`);
+  const { data, error } = await client.from('notifications').select('*').or(orParts.join(',')).order('created_at', { ascending: false }).limit(40);
+  if (error) return; // เงียบไว้ ไม่รบกวนผู้ใช้ถ้าตารางยังไม่พร้อม (เช่น ยังไม่ได้รัน migration)
+  ntfList = (data || []).filter(n => {
+    if (n.recipient_id === ntfUser.id || n.recipient_user_id === ntfUser.id) return true;
+    const scopedDept = n.department || n.recipient_department || null;
+    if (n.recipient_role) {
+      if (n.recipient_role !== ntfRole) return false;
+      if (scopedDept && ntfRole !== 'super' && scopedDept !== ntfDept) return false;
+      return true;
+    }
+    if (scopedDept && (ntfRole === 'unit' || ntfRole === 'super')) {
+      return ntfRole === 'super' || scopedDept === ntfDept;
+    }
+    return false;
+  });
+  ntfRenderBadge();
+  if (document.getElementById('ntfPanel')?.classList.contains('open')) ntfRenderList();
+}
+
+function ntfRenderBadge() {
+  const unread = ntfList.filter(n => !n.is_read).length;
+  document.querySelectorAll('.ntf-badge').forEach(b => {
+    b.textContent = unread > 99 ? '99+' : unread;
+    b.classList.toggle('show', unread > 0);
+  });
+}
+
+function ntfTimeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'เมื่อสักครู่';
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ชั่วโมงที่แล้ว`;
+  const d = Math.floor(hr / 24);
+  if (d < 7) return `${d} วันที่แล้ว`;
+  return new Date(iso).toLocaleDateString('th-TH');
+}
+
+function ntfEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+function ntfRenderList() {
+  const wrap = document.getElementById('ntfList');
+  if (!wrap) return;
+  if (!ntfList.length) { wrap.innerHTML = '<div class="ntf-empty">📭 ไม่มีการแจ้งเตือน</div>'; return; }
+  wrap.innerHTML = ntfList.slice(0, 30).map(n => `
+    <button class="ntf-item ${n.is_read ? '' : 'unread'}" onclick="ntfClickItem('${n.id}', ${n.link ? `'${ntfEsc(n.link)}'` : 'null'})">
+      <div class="ntf-item-title">${n.is_read ? '' : '<span class="ntf-dot"></span>'}${ntfEsc(n.title || 'แจ้งเตือน')}</div>
+      <div class="ntf-item-msg">${ntfEsc(n.message || '')}</div>
+      <div class="ntf-item-time">${ntfTimeAgo(n.created_at)}</div>
+    </button>
+  `).join('');
+}
+
+function ntfToggle(e) {
+  e && e.stopPropagation();
+  const panel = document.getElementById('ntfPanel');
+  if (!panel) return;
+  const willOpen = !panel.classList.contains('open');
+  document.querySelectorAll('.ntf-panel.open').forEach(p => p.classList.remove('open'));
+  if (willOpen) { panel.classList.add('open'); ntfRenderList(); }
+}
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('ntfPanel');
+  if (panel && panel.classList.contains('open') && !e.target.closest('.ntf-wrap')) panel.classList.remove('open');
+});
+
+async function ntfClickItem(id, link) {
+  const client = ntfSb();
+  const item = ntfList.find(n => n.id === id);
+  if (item && !item.is_read && client) {
+    item.is_read = true;
+    await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id);
+    ntfRenderBadge();
+  }
+  if (link) window.location.href = link;
+}
+
+async function ntfMarkAllRead() {
+  const client = ntfSb();
+  if (!client || !ntfUser) return;
+  const unreadIds = ntfList.filter(n => !n.is_read).map(n => n.id);
+  if (!unreadIds.length) return;
+  ntfList.forEach(n => n.is_read = true);
+  ntfRenderBadge(); ntfRenderList();
+  await client.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', unreadIds);
+}
+
+ntfWaitForAuth();
+</script>
+<div id="manualAddModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:3000;align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="max-width:480px;width:100%;margin:0;max-height:85vh;overflow-y:auto">
+    <div style="font-weight:700;font-size:15px;margin-bottom:12px">🔍 ค้นหาเจ้าหน้าที่มูลนิธิ (พิมพ์ชื่อ)</div>
+    <input type="text" id="manualAddSearch" placeholder="พิมพ์ชื่อหรือนามสกุล..." oninput="filterManualAddResults()" style="width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;margin-bottom:6px">
+    <div id="manualAddResults" style="max-height:220px;overflow-y:auto;border:1px solid #f1f5f9;border-radius:6px"></div>
+
+    <div id="manualAddPreview" style="display:none;margin-top:14px;background:#f8fafc;border-radius:8px;padding:14px">
+      <table style="width:100%;font-size:12.5px;border-collapse:collapse">
+        <tr><td style="color:#64748b;padding:3px 8px 3px 0;white-space:nowrap">ชื่อ-สกุล</td><td style="font-weight:600" id="mv_name"></td></tr>
+        <tr><td style="color:#64748b;padding:3px 8px 3px 0">เลขบัตรประชาชน</td><td id="mv_idcard"></td></tr>
+        <tr><td style="color:#64748b;padding:3px 8px 3px 0">วันเกิด</td><td id="mv_birth"></td></tr>
+        <tr><td style="color:#64748b;padding:3px 8px 3px 0">อายุ</td><td id="mv_age"></td></tr>
+        <tr><td style="color:#64748b;padding:3px 8px 3px 0">หน่วยงาน</td><td id="mv_dept"></td></tr>
+      </table>
+      <label style="font-size:12px;font-weight:600;color:#475569;display:block;margin:10px 0 4px">หมายเหตุ (เหตุผล เช่น บรรจุ / ลาออก / เสียชีวิต / เปลี่ยนแปลงข้อมูล)</label>
+      <input type="text" id="mv_remark" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:12.5px">
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeManualAddModal()">ยกเลิก</button>
+      <button class="btn btn-success" onclick="confirmManualAdd()">✅ เพิ่มรายชื่อ</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
