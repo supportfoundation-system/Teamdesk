@@ -514,7 +514,10 @@ function publishUser() {
   // เมนูครัวหมุนเวียน: เฉพาะแผนกแผนงานและติดตามผล + หัวหน้ากองของแผนกนี้ + หัวหน้าสำนักงาน/ผู้ดูแลระบบ
   const kd = S.me ? S.d.depts.find(d => String(d.name || '').replace(/\s+/g, '').indexOf('แผนงานและติดตามผล') >= 0) : null;
   const kitchen = !!S.me && !!kd && (isTop() || (isDiv() && !!kd.division_id && S.me.division_id === kd.division_id) || S.me.dept_id === kd.id);
-  window.DESK_USER = S.me ? { name: S.me.full_name || S.me.nickname, division: v ? v.name : '', role: S.me.role, apps: { kitchen: kitchen } } : null;
+  // เมนูทะเบียนทุน (สิริกิติ์ฯ / อานันทมหิดล): เฉพาะแผนกสนับสนุนการเงินมูลนิธิ 3 + หัวหน้ากองสนับสนุนการเงินมูลนิธิ + หัวหน้าสำนักงาน/ผู้ดูแลระบบ
+  const sd = S.me ? S.d.depts.find(d => /สนับสนุนการเงินมูลนิธิ3$/.test(String(d.name || '').replace(/\s+/g, ''))) : null;
+  const scholar = !!S.me && !!sd && (isTop() || (isDiv() && !!sd.division_id && S.me.division_id === sd.division_id) || S.me.dept_id === sd.id);
+  window.DESK_USER = S.me ? { name: S.me.full_name || S.me.nickname, division: v ? v.name : '', role: S.me.role, apps: { kitchen: kitchen, scholar: scholar } } : null;
   try { window.dispatchEvent(new Event('desk-user')); } catch (e) {}
 }
 async function start() {

@@ -5,6 +5,8 @@
  *   1) เงินยืมทดรองจ่าย  — ส่งชื่อและกองของผู้ใช้ไปให้ → เข้าระบบอัตโนมัติ · ตัวเลขแดง = เกิน/ใกล้ครบกำหนด
  *   2) ใบคุมต้นขั้วเช็ค
  *   3) ครัวหมุนเวียน — เฉพาะผู้ที่ระบบต้นทางอนุญาต (DESK_USER.apps.kitchen = true)
+ *   4) ทะเบียนทุนสิริกิติ์ฯ / 5) ทะเบียนทุนอานันทมหิดล — เฉพาะผู้ที่ระบบต้นทางอนุญาต (DESK_USER.apps.scholar = true)
+ *      เปิดแท็บใหม่เป็นค่าเริ่มต้น (Apps Script ต้องตั้ง XFrameOptionsMode.ALLOWALL ก่อน จึงใส่ SIRIKIT_OPEN / ANANDA_OPEN: "inapp" ได้)
  *  • กดแล้วเปิดเต็มจอ แบบเดียวกับระบบจองรถ (แถบบน: ‹ กลับ · ชื่อระบบ · เปิดแยก ↗)
  *  • มือถือมีปุ่มลอย "ระบบงาน" มุมขวาล่าง กดแล้วเลือกระบบ
  *
@@ -25,6 +27,8 @@
 (function () {
   'use strict';
   const DEFAULT_KITCHEN_URL = 'https://script.google.com/macros/s/AKfycbz0xAWiwCxCXk0VpAjPeGBUCOqqanR-bUMIZJmClEfC8NQZEYNVI5AP7Uxr7r6WylTF/exec';
+  const DEFAULT_SIRIKIT_URL = 'https://script.google.com/macros/s/AKfycbysmQT7Dx8s9l52_rDaTUGMUPkrCc8BlIxTrS62Emy4WdngvoO6Z3xFHcnCVDCoQfDj6Q/exec';
+  const DEFAULT_ANANDA_URL = 'https://script.google.com/macros/s/AKfycbxlZ-au1Gwc_60jgxB1Y01XIyTSE-z3r1X2UXsszQ5-NaPBddahzTActLAxlOhs8PtUcg/exec';
   const DEFAULT_CHECK_URL = 'https://script.google.com/macros/s/AKfycbznnWnVRrYqZKHPOht7871GKJ1XziqJcTD93vXCdpM55YSLzLe_hwRq4ETPq15Nrc-uhg/exec';
   const MOBILE = 860;
   const cfg = () => window.DESK_SUITE || {};
@@ -66,6 +70,24 @@
       url() { return this.base(); },
       newTab: () => pick('KITCHEN_OPEN') === 'newtab',
       allowed: () => !!((user() || {}).apps || {}).kitchen
+    },
+    {
+      key: 'sir', name: 'ทะเบียนทุนสิริกิติ์ฯ', short: 'ทุนสิริกิติ์', badge: false,
+      icon: SVG('<path d="M2 9.5 12 5l10 4.5-10 4.5z"/><path d="M6 11.5v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4"/><path d="M22 9.5v5"/>'),
+      tint: 'linear-gradient(140deg,#93c5fd,#1d4ed8)',
+      base: () => pick('SIRIKIT_URL') || DEFAULT_SIRIKIT_URL,
+      url() { return this.base(); },
+      newTab: () => pick('SIRIKIT_OPEN') !== 'inapp',
+      allowed: () => !!((user() || {}).apps || {}).scholar
+    },
+    {
+      key: 'ana', name: 'ทะเบียนทุนอานันทมหิดล', short: 'ทุนอานันทฯ', badge: false,
+      icon: SVG('<path d="M4 19.5V6a2 2 0 0 1 2-2h12v15.5H6a2 2 0 0 0-2 2"/><path d="M4 19.5a2 2 0 0 1 2-2h12"/><path d="M9 8.5h6M9 11.5h4"/>'),
+      tint: 'linear-gradient(140deg,#fcd34d,#b45309)',
+      base: () => pick('ANANDA_URL') || DEFAULT_ANANDA_URL,
+      url() { return this.base(); },
+      newTab: () => pick('ANANDA_OPEN') !== 'inapp',
+      allowed: () => !!((user() || {}).apps || {}).scholar
     }
   ];
   const live = () => APPS.filter(a => a.base() && (!a.allowed || a.allowed()));
